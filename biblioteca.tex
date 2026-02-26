@@ -1,0 +1,229 @@
+\documentclass{article}
+\usepackage{zed-csp}
+
+\begin{document}
+
+\section{Requerimientos}
+Se quiere desarrollar un sistema de gestión de libros prestados para una biblioteca. Cada libro tiene un identificador (su ISBN), un título y un autor. Se debe llevar un registro de los libros que posee la biblioteca y proveer operaciones para dar de alta o baja estos libros. Si un libro es prestado, deberá quedar registrado el número del socio a quién fue prestado el libro. Cada socio puede retirar sólo un libro por vez.
+Además, el sistema deberá proveer una funcionalidad para:
+\begin{itemize}
+    \item dado un título y un autor, determinar los ISBN de los libros correspondientes (teniendo en cuenta que puede haber varias ediciones diferentes del mismo libro)
+    \item dado un ISBN, consultar cuántos libros hay disponible para préstamo
+\end{itemize}
+Se provee una función que vincula cada ISBN con su título y autor correspondiente.
+
+\section{Especificación}
+
+\begin{zed}
+[ISBN, NROSOCIO, TITULO, AUTOR]
+\end{zed}
+
+\begin{syntax}
+MSJ & ::= & ok | error
+\end{syntax}
+
+\begin{axdef}
+datos : ISBN \pfun TITULO \cross AUTOR
+\end{axdef}
+
+\begin{schema}{Biblioteca}
+libros: ISNB \pfun \nat \\
+cantPrestada: ISBN \pfun \nat \\
+prestamos: NROSOCIO \pfun ISBN
+\end{schema}
+
+\begin{schema}{BibliotecaInit}
+Biblioteca
+\where
+libros = \emptyset \\
+cantPrestada = \emptyset \\
+prestamos = \emptyset
+\end{schema}
+
+\begin{schema}{BibliotecaInv1}
+Biblioteca
+\where
+\dom cantPrestada = \dom libros
+\end{schema}
+
+\begin{schema}{BibliotecaInv2}
+Biblioteca
+\where
+\forall l : ISBN | l \in \dom cantPrestada @ cantPrestada~l \leq libros~l
+\end{schema}
+
+\begin{schema}{ConsultaISBN}
+\Xi Biblioteca \\
+t? : TITULO \\ 
+a? : AUTOR \\
+isbns!: \power ISBN \\
+\where 
+isbns! = datos \rres \set{(t?,a?)} \\
+\end{schema}
+
+\begin{schema}{ConsultaDisponibilidadOk}
+\Xi Biblioteca \\
+l? : ISBN \\ 
+n! : \nat \\
+m! : MSJ \\
+\where 
+l? \in \dom libros \\
+cantPrestada~l? \leq libros~l? \\
+n! = libros~l? - cantPrestada~l? \\
+\end{schema}
+
+\begin{schema}{ConsultaError}
+\Xi Biblioteca \\
+t? : TITULO \\ 
+a? : AUTOR \\
+m! : MSJ
+\where
+(t?,a?) \notin \ran info \\
+m! = error \\
+\end{schema}
+
+\begin{zed}
+Consulta \defs ConsultaOk \lor ConsultaError
+\end{zed}
+
+\begin{schema}{PrestarLibroOk}
+\Delta Biblioteca \\
+l? : ISBN \\ 
+s? : NROSOCIO \\
+m! : MSJ \\
+\where
+s? \notin \dom prestados \\
+l? \in \dom libros \\
+\#(prestados \rres \set{l?}) < libros \# l? \\
+prestados' = prestados \oplus \set{s? \mapsto l?} \\
+libros' = libros \\
+info' = info \\
+m! = ok \\
+\end{schema}
+
+\begin{schema}{SocioExcedeLimite}
+\Xi Biblioteca \\
+s? : NROSOCIO \\
+m! : MSJ \\
+\where
+s? \in \dom prestados \\
+m! = error \\
+\end{schema}
+
+\begin{schema}{LibroNoDisponible}
+\Xi Biblioteca \\
+l? : ISBN \\ 
+m! : MSJ \\
+\where
+\#(prestados \rres \set{l?}) = libros \# l? \\
+m! = error \\
+\end{schema}
+
+\begin{schema}{LibroNoExiste}
+\Xi Biblioteca \\
+l? : ISBN \\ 
+m! : MSJ \\
+\where
+l? \notin \dom libros \\
+m! = error \\
+\end{schema}
+
+\begin{syntax}
+PrestarLibro & \defs & PrestarLibroOk \lor \\
+&& SocioExcedeLimite \lor LibroNoDisponible \lor LibroNoExiste \\
+\end{syntax}
+
+\begin{schema}{DevolverLibroOk}
+\Delta Biblioteca \\
+s? : NROSOCIO \\
+m! : MSJ \\
+\where
+s? \in \dom prestados \\
+prestados' = prestados \dares \set{s?} \\
+m! = ok \\
+\end{schema}
+
+\begin{schema}{SocioSinLibro}
+\Xi Biblioteca \\
+s? : NROSOCIO \\
+m! : MSJ \\
+\where
+s? \notin \dom prestados \\
+m! = error \\
+\end{schema}
+
+\begin{zed}
+    DevolverLibro \defs DevolverLibroOk \lor SocioSinLibro
+\end{zed}
+
+\begin{schema}{AltaLibroOk}
+\Delta Biblioteca \\
+l? : ISBN \\ 
+t? : TITULO \\
+a? : AUTOR 
+\where
+l? \in \dom info \implies info (l?) = (t?, a?) \\
+libros' = libros \oplus \set{l? \mapsto libros~l? + 1} \\ % \uplus \lbag l? \rbag \\
+info' = info \oplus \set{l? \mapsto (t?, a?)}
+prestados' = prestados
+\end{schema}
+
+\begin{schema}{AltaLibroError}
+\Xi Biblioteca \\
+l? : ISBN \\ 
+t? : TITULO \\
+a? : AUTOR 
+\where
+l? \in \dom info \\
+info (l?) \neq (t?, a?) \\
+libros' = libros \\
+info' = info \\
+prestados' = prestados
+\end{schema}
+
+\begin{schema}{BajaLibroOk1}
+\Delta Biblioteca \\
+l? : ISBN \\
+m! : MSJ \\
+\where
+l? \in \dom info \\
+\#(prestados \rres \set{l?}) \lt libros~l? \\
+libros~l? \gt 1 \\
+libros' = libros \oplus \set{l? \mapsto libros~l? - 1} \\ % \uminus \lbag l? \rbag \\
+info' = info \\
+prestados' = prestados \\
+m! = ok \\
+\end{schema}
+
+\begin{schema}{BajaLibroOk2}
+\Delta Biblioteca \\
+l? : ISBN \\
+m! : MSJ \\
+\where
+l? \in \dom info \\
+\#(prestados \rres \set{l?}) \lt libros~l? \\
+libros~l? = 1 \\
+libros' = libros \dares \set{l?} \\
+info' = info \dares \set{l?} \\
+prestados' = prestados \\
+m! = ok \\
+\end{schema}
+
+\begin{schema}{BajaLibroError}
+\Delta Biblioteca \\
+l? : ISBN \\
+m! : MSJ \\
+\where
+l? \in \dom info \\
+\#(prestados \rres \set{l?}) \geq libros~l? \\
+libros' = libros' \\
+info' = info \\
+prestados' = prestados \\
+m! = error \\
+\end{schema}
+
+\begin{zed}
+    BajaLibro \defs BajaLibroOk1 \lor BajaLibroOk2 \lor BajaLibroError \lor LibroNoExiste
+\end{zed}
+
+\end{document}
