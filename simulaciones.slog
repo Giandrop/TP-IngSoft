@@ -1,0 +1,142 @@
+% Simulaciones
+% Agregar libro nuevo, luego libro existente
+[initial]:[invTipo, bibliotecaInv] 
+>> altaLibro(L:"9788420471839", N:[[2, 1]]) 
+>> consultarLibro(L:"9788420471839").
+
+% Execution trace is:
+% Libros = {},  
+% CantPrestada = {},  
+% Prestamos = {}
+%   ----> altaLibro(L:"9788420471839",N:2)
+% Libros = {[9788420471839,2]},  
+% CantPrestada = {[9788420471839,0]},  
+% Prestamos = {}
+%   ----> altaLibro(L:"9788420471839",N:1)
+% Libros = {[9788420471839,2],[9788420471839,1]},  
+% CantPrestada = {[9788420471839,0]},  
+% Prestamos = {}
+%   invTipo check failed
+%   ----> consultarLibro(L:"9788420471839") failed, execution aborted
+
+% Vemos que se rompa la invariante de que Libros es función (el libro aparece dos veces en el dominio)
+
+% Revisamos altaLibroNuevo
+% dec_p_type(altaLibroNuevo(libros, cantPrestada, prestamos, isbn, int, libros, cantPrestada, prestamos)).
+% altaLibroNuevo(Libros, CantPrestada, Prestamos, L, N, Libros_, CantPrestada_, Prestamos_) :-
+%     dec(DomLibros, set(isbn)) & L nin DomLibros
+%     & N >= 0
+%     & un(Libros, {[L, N]}, Libros_)
+%     & un(CantPrestada, {[L, 0]}, CantPrestada_)
+%     & Prestamos_ = Prestamos.
+
+% Falta agregar que DomLibros sea efectivamente el dominio de libros dom(Libros, DomLibros)
+
+% Execution trace is:
+% Libros = {},  
+% CantPrestada = {},  
+% Prestamos = {}
+%   ----> altaLibro(L:"9788420471839",N:2)
+% Libros = {[9788420471839,2]},  
+% CantPrestada = {[9788420471839,0]},  
+% Prestamos = {}
+%   ----> altaLibro(L:"9788420471839",N:1)
+% Libros = {[9788420471839,1]},  
+% CantPrestada = {[9788420471839,0]},  
+% Prestamos = {}
+%   ----> consultarLibro(L:"9788420471839")
+% Libros = {[9788420471839,1]},  
+% CantPrestada = {[9788420471839,0]},  
+% Prestamos = {},  
+% N = 1,  
+% M = ok
+
+% Faltaba sumar la cantidad existente de libros
+% dec(Cant, int) & applyTo(Libros, L, Cant) & oplus(Libros, {[L, N + Cant]}, Libros_)
+
+% Ahora si:
+% Execution trace is:
+% Libros = {},  
+% CantPrestada = {},  
+% Prestamos = {}
+%   ----> altaLibro(L:"9788420471839",N:2)
+% Libros = {[9788420471839,2]},  
+% CantPrestada = {[9788420471839,0]},  
+% Prestamos = {}
+%   ----> altaLibro(L:"9788420471839",N:1)
+% Libros = {[9788420471839,3]},  
+% CantPrestada = {[9788420471839,0]},  
+% Prestamos = {}
+%   ----> consultarLibro(L:"9788420471839")
+% Libros = {[9788420471839,3]},  
+% CantPrestada = {[9788420471839,0]},  
+% Prestamos = {},  
+% N = 3,  
+% M = ok
+
+% Simulaciones que involucran prestarLibroOk y socioExcedeLimite
+[initial]:[invTipo, bibliotecaInv] 
+>> altaLibro(L:[["9788420471839", "9788432320767"]], N:[[2, 1]]) 
+>> prestarLibro(L:[["9788420471839", "9788432320767"]],S:"P-4540/3").
+
+% Execution trace is:
+% Libros = {},  
+% CantPrestada = {},  
+% Prestamos = {}
+%   ----> altaLibro(L:"9788420471839",N:2)
+% Libros = {[9788420471839,2]},  
+% CantPrestada = {[9788420471839,0]},  
+% Prestamos = {}
+%   ----> altaLibro(L:"9788432320767",N:1)
+% Libros = {[9788420471839,2],[9788432320767,1]},  
+% CantPrestada = {[9788420471839,0],[9788432320767,0]},  
+% Prestamos = {}
+%   ----> prestarLibro(L:"9788420471839",S:"P-4540/3")
+% M = ok,  
+% Libros = {[9788420471839,2],[9788432320767,1]},  
+% CantPrestada = {[9788432320767,0],[9788420471839,1]},  
+% Prestamos = {[P-4540/3,9788420471839]}
+%   ----> prestarLibro(L:"9788432320767",S:"P-4540/3")
+% M = excede_limite,  
+% Libros = {[9788420471839,2],[9788432320767,1]},  
+% CantPrestada = {[9788432320767,0],[9788420471839,1]},  
+% Prestamos = {[P-4540/3,9788420471839]}
+
+% Simulaciones simbólicas
+% PrestarLibro da no disponible
+dec([Libros, Libros_], libros) 
+& dec([CantPrestada, CantPrestada_], cantPrestada) 
+& dec([Prestamos, Prestamos_], prestamos) 
+& dec(L, isbn) & dec(S, nrosocio) 
+& prestarLibro(Libros, CantPrestada, Prestamos, L, S, no_disponible, Libros_, CantPrestada_, Prestamos_).
+
+% Libros = {[n3,n2]},  
+% Libros_ = {[n3,n2]},  
+% CantPrestada = {[n3,n2]},  
+% CantPrestada_ = {[n3,n2]},  
+% Prestamos = n1,  
+% Prestamos_ = n1,  
+% L = n3,  
+% S = n0
+
+% Vemos que la cantidad de libros "n3" prestados es la misma que la que hay
+
+% ConsultarLibro da no existe
+dec([Libros, Libros_], libros) 
+& dec([CantPrestada, CantPrestada_], cantPrestada) 
+& dec([Prestamos, Prestamos_], prestamos) 
+& dec(L, isbn) & dec(N, int) 
+& consultarLibro(Libros, CantPrestada, Prestamos, L, N, no_existe).
+
+% Libros = {},  
+% CantPrestada = n3,  
+% Prestamos = n2,  
+% L = n1,  
+% N = n0
+
+% n1 no está en Libros
+
+% Comandos
+% consult('biblioteca.pl').
+% vcg('biblioteca.pl').
+% consult('biblioteca-vc.pl').
