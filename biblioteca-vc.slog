@@ -1,4 +1,4 @@
-% Verification conditions for biblioteca.pl
+% Verification conditions for biblioteca.slog
 
 % Run check_vcs_biblioteca to see if the program verifies all the VCs
 
@@ -6,7 +6,7 @@
 
 :- reset_types.
 
-:- consult('biblioteca.pl').
+:- consult('biblioteca.slog').
 
 :- notype_check.
 

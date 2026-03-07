@@ -1,0 +1,30 @@
+altaLibro_dnf_1(L,N,Libros,CantPrestada,Prestamos) :-
+  N>=0 &
+  L nin _4814 &
+  dom(Libros,_4814) &
+  dec(_4814,set(isbn)).
+
+altaLibro_sc_22(L,N,Libros,CantPrestada,Prestamos) :-
+  _5012 is N+_5108 &
+  applyTo(Libros,L,_5108) &
+  dec([_5108,_5012],int) &
+  N>=0 &
+  L in _5034 &
+  dom(Libros,_5034) &
+  dec(_5034,set(isbn)) &
+  Libros={_5364} &
+  dec(_5364,[isbn,int]).
+
+altaLibro_sc_23(L,N,Libros,CantPrestada,Prestamos) :-
+  _5012 is N+_5108 &
+  applyTo(Libros,L,_5108) &
+  dec([_5108,_5012],int) &
+  N>=0 &
+  L in _5034 &
+  dom(Libros,_5034) &
+  dec(_5034,set(isbn)) &
+  Libros={_5364,_5426/_5428} &
+  _5364 neq _5426 &
+  dec([_5364,_5426],[isbn,int]) &
+  dec(_5428,set([isbn,int])).
+
