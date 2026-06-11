@@ -1,0 +1,102 @@
+consultarLibro_ts_12(L,Libros,CantPrestada,Prestamos,Limite) :-
+  _106066>_106068 &
+  applyTo(Libros,L,_106066) &
+  applyTo(CantPrestada,L,_106068) &
+  dec([_106068,_106066],int) &
+  L in _106022 &
+  dom(Libros,_106022) &
+  dec(_106022,set(isbn)) &
+  Libros={_106558} &
+  dec(_106558,[isbn,int]).
+
+consultarLibro_tc_12(L,Libros,CantPrestada,Prestamos,Limite) :-
+  Libros={[isbn:n0,0]} &
+  L=isbn:n0 &
+  CantPrestada={[isbn:n0,-1]}.
+
+consultarLibro_ts_13(L,Libros,CantPrestada,Prestamos,Limite) :-
+  _106066>_106068 &
+  applyTo(Libros,L,_106066) &
+  applyTo(CantPrestada,L,_106068) &
+  dec([_106068,_106066],int) &
+  L in _106022 &
+  dom(Libros,_106022) &
+  dec(_106022,set(isbn)) &
+  Libros={_106558,_106620/_106622} &
+  _106558 neq _106620 &
+  dec([_106558,_106620],[isbn,int]) &
+  dec(_106622,set([isbn,int])).
+
+consultarLibro_tc_13(L,Libros,CantPrestada,Prestamos,Limite) :-
+  Libros={[isbn:n0,0],[isbn:n1,2]} &
+  L=isbn:n0 &
+  CantPrestada={[isbn:n0,-1]}.
+
+consultarLibro_ts_22(L,Libros,CantPrestada,Prestamos,Limite) :-
+  _106238=_106240 &
+  applyTo(Libros,L,_106240) &
+  applyTo(CantPrestada,L,_106238) &
+  dec([_106238,_106240],int) &
+  L in _106200 &
+  dom(Libros,_106200) &
+  dec(_106200,set(isbn)) &
+  Libros={_106558} &
+  dec(_106558,[isbn,int]).
+
+consultarLibro_tc_22(L,Libros,CantPrestada,Prestamos,Limite) :-
+  Libros={[isbn:n0,1]} &
+  L=isbn:n0 &
+  CantPrestada={[isbn:n0,1]}.
+
+consultarLibro_ts_23(L,Libros,CantPrestada,Prestamos,Limite) :-
+  _106238=_106240 &
+  applyTo(Libros,L,_106240) &
+  applyTo(CantPrestada,L,_106238) &
+  dec([_106238,_106240],int) &
+  L in _106200 &
+  dom(Libros,_106200) &
+  dec(_106200,set(isbn)) &
+  Libros={_106558,_106620/_106622} &
+  _106558 neq _106620 &
+  dec([_106558,_106620],[isbn,int]) &
+  dec(_106622,set([isbn,int])).
+
+consultarLibro_tc_23(L,Libros,CantPrestada,Prestamos,Limite) :-
+  Libros={[isbn:n0,3],[isbn:n1,2]} &
+  L=isbn:n0 &
+  CantPrestada={[isbn:n0,3]}.
+
+consultarLibro_ts_31(L,Libros,CantPrestada,Prestamos,Limite) :-
+  L nin _106366 &
+  dom(Libros,_106366) &
+  dec(_106366,set(isbn)) &
+  Libros={}.
+
+consultarLibro_tc_31(L,Libros,CantPrestada,Prestamos,Limite) :-
+  L=isbn:n0 &
+  Libros={}.
+
+consultarLibro_ts_32(L,Libros,CantPrestada,Prestamos,Limite) :-
+  L nin _106366 &
+  dom(Libros,_106366) &
+  dec(_106366,set(isbn)) &
+  Libros={_106558} &
+  dec(_106558,[isbn,int]).
+
+consultarLibro_tc_32(L,Libros,CantPrestada,Prestamos,Limite) :-
+  L=isbn:n0 &
+  Libros={[isbn:n1,2]}.
+
+consultarLibro_ts_33(L,Libros,CantPrestada,Prestamos,Limite) :-
+  L nin _106366 &
+  dom(Libros,_106366) &
+  dec(_106366,set(isbn)) &
+  Libros={_106558,_106620/_106622} &
+  _106558 neq _106620 &
+  dec([_106558,_106620],[isbn,int]) &
+  dec(_106622,set([isbn,int])).
+
+consultarLibro_tc_33(L,Libros,CantPrestada,Prestamos,Limite) :-
+  L=isbn:n0 &
+  Libros={[isbn:n1,3],[isbn:n2,4]}.
+

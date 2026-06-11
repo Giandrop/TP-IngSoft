@@ -6,6 +6,8 @@
 
 :- reset_types.
 
+:- add_lib("osets.slog").
+
 :- consult('biblioteca.slog').
 
 :- notype_check.
@@ -39,6 +41,9 @@ def_to(60000).
 :- prolog_call(dynamic(unsat_sol/6)).
 :- prolog_call(dynamic(vc_proved/1)).
 
+axioms_sat :-
+  limite(Limite).
+
 bibliotecaInit_sat_invTipo :-
   bibliotecaInit(Libros,CantPrestada,Prestamos) &
   invTipo(Libros,CantPrestada,Prestamos).
@@ -68,33 +73,33 @@ altaLibro_pi_bibliotecaInv(CantPrestada,Libros,Libros,CantPrestada,Prestamos,L,N
   ).
 
 consultarLibro_is_sat :-
-  consultarLibro(Libros,CantPrestada,Prestamos,L,N,M).
+  consultarLibro(Libros,CantPrestada,L,N,M).
 
-consultarLibro_pi_invTipo(Libros,CantPrestada,Prestamos,Libros,CantPrestada,Prestamos,L,N,M):-
+consultarLibro_pi_invTipo(Libros,CantPrestada,Prestamos,Libros,CantPrestada,L,N,M):-
   % consultarLibro doesn't change invTipo variables
   neg(true).
 
-consultarLibro_pi_bibliotecaInv(CantPrestada,Libros,Libros,CantPrestada,Prestamos,L,N,M):-
+consultarLibro_pi_bibliotecaInv(CantPrestada,Libros,Libros,CantPrestada,L,N,M):-
   % consultarLibro doesn't change bibliotecaInv variables
   neg(true).
 
 prestarLibro_is_sat :-
-  prestarLibro(Libros,CantPrestada,Prestamos,L,S,M,Libros_,CantPrestada_,Prestamos_) & 
+  prestarLibro(Limite,Libros,CantPrestada,Prestamos,L,S,M,Libros_,CantPrestada_,Prestamos_) & 
   delay([Libros,CantPrestada,Prestamos] neq [Libros_,CantPrestada_,Prestamos_],false).
 
-prestarLibro_pi_invTipo(Libros,CantPrestada,Prestamos,Libros,CantPrestada,Prestamos,L,S,M,Libros_,CantPrestada_,Prestamos_) :-
+prestarLibro_pi_invTipo(Libros,CantPrestada,Prestamos,Limite,Libros,CantPrestada,Prestamos,L,S,M,Libros_,CantPrestada_,Prestamos_) :-
   % here conjoin other ax/inv as hypotheses if necessary
   neg(
     invTipo(Libros,CantPrestada,Prestamos) &
-    prestarLibro(Libros,CantPrestada,Prestamos,L,S,M,Libros_,CantPrestada_,Prestamos_) implies
+    prestarLibro(Limite,Libros,CantPrestada,Prestamos,L,S,M,Libros_,CantPrestada_,Prestamos_) implies
     invTipo(Libros_,CantPrestada_,Prestamos_)
   ).
 
-prestarLibro_pi_bibliotecaInv(CantPrestada,Libros,Libros,CantPrestada,Prestamos,L,S,M,Libros_,CantPrestada_,Prestamos_) :-
+prestarLibro_pi_bibliotecaInv(CantPrestada,Libros,Limite,Libros,CantPrestada,Prestamos,L,S,M,Libros_,CantPrestada_,Prestamos_) :-
   % here conjoin other ax/inv as hypotheses if necessary
   neg(
     bibliotecaInv(CantPrestada,Libros) &
-    prestarLibro(Libros,CantPrestada,Prestamos,L,S,M,Libros_,CantPrestada_,Prestamos_) implies
+    prestarLibro(Limite,Libros,CantPrestada,Prestamos,L,S,M,Libros_,CantPrestada_,Prestamos_) implies
     bibliotecaInv(CantPrestada_,Libros_)
   ).
 
@@ -136,6 +141,7 @@ check_aux_stats :- prolog_call(check_aux_stats1).
 
 check_aux(TO,Opt) :-
   check_aux_set_initial &
+  check_sat_vc(axioms_sat) &
   check_sat_vc(bibliotecaInit_sat_invTipo) &
   check_sat_vc(bibliotecaInit_sat_bibliotecaInv) &
   check_sat_vc(altaLibro_is_sat) &
@@ -143,10 +149,10 @@ check_aux(TO,Opt) :-
   check_sat_vc(prestarLibro_is_sat) &
   check_unsat_vc(altaLibro_pi_invTipo(Libros,CantPrestada,Prestamos,Libros,CantPrestada,Prestamos,L,N,Libros_,CantPrestada_,Prestamos_),TO,Opt) &
   check_unsat_vc(altaLibro_pi_bibliotecaInv(CantPrestada,Libros,Libros,CantPrestada,Prestamos,L,N,Libros_,CantPrestada_,Prestamos_),TO,Opt) &
-  check_unsat_vc(consultarLibro_pi_invTipo(Libros,CantPrestada,Prestamos,Libros,CantPrestada,Prestamos,L,N,M),TO,Opt) &
-  check_unsat_vc(consultarLibro_pi_bibliotecaInv(CantPrestada,Libros,Libros,CantPrestada,Prestamos,L,N,M),TO,Opt) &
-  check_unsat_vc(prestarLibro_pi_invTipo(Libros,CantPrestada,Prestamos,Libros,CantPrestada,Prestamos,L,S,M,Libros_,CantPrestada_,Prestamos_),TO,Opt) &
-  check_unsat_vc(prestarLibro_pi_bibliotecaInv(CantPrestada,Libros,Libros,CantPrestada,Prestamos,L,S,M,Libros_,CantPrestada_,Prestamos_),TO,Opt) &
+  check_unsat_vc(consultarLibro_pi_invTipo(Libros,CantPrestada,Prestamos,Libros,CantPrestada,L,N,M),TO,Opt) &
+  check_unsat_vc(consultarLibro_pi_bibliotecaInv(CantPrestada,Libros,Libros,CantPrestada,L,N,M),TO,Opt) &
+  check_unsat_vc(prestarLibro_pi_invTipo(Libros,CantPrestada,Prestamos,Limite,Libros,CantPrestada,Prestamos,L,S,M,Libros_,CantPrestada_,Prestamos_),TO,Opt) &
+  check_unsat_vc(prestarLibro_pi_bibliotecaInv(CantPrestada,Libros,Limite,Libros,CantPrestada,Prestamos,L,S,M,Libros_,CantPrestada_,Prestamos_),TO,Opt) &
   check_aux_stats.
 
 :- nl & prolog_call(ansi_format([bold,fg(green)],'Type checking has been deactivated.',[])) & nl & nl.

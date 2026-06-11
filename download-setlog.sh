@@ -2,7 +2,7 @@
 
 URL="https://www.clpset.unipr.it/SETLOG/setlog499-1g.zip"
 ZIP="setlog499-1g.zip"
-DIR="setlog"
+DIR="."
 
 # Descargar
 echo "Descargando $ZIP..."

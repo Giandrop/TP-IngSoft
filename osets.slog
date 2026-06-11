@@ -1,0 +1,724 @@
+% version 0.1
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%                                                             %
+%       Ordered sets -- Sets with order and repetitions       %
+%                                                             %
+%        by Maximiliano Cristia' and  Gianfranco Rossi        %
+%                        February 2025                        %
+%                                                             %
+%                  Revised February 2025                      %
+%                                                             %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% Ordered sets (osets) are similar to sequences or lists but:
+%   1- there are fewer operations defined
+%   2- decidability can be easily determined because all the
+%      operations are given as formulas of theories whose
+%      decidability have already been established
+%
+% Due to 1 we call them ordered sets (osets) instead of lists
+% or sequences.
+%
+% An oset is a function from the positive naturals to some type
+% W. The difference with lists is that the domain of an oset
+% isn't necessarily an integer interval of the form [1,n] where
+% n is the length of the list. For example: {[1,a],[3,b]} is an
+% oset but is not a list or sequence as there's no ordered pair
+% with first component equal to 2.
+%
+% For this reason some operations of a standard theory of lists
+% can't be defined in {log} (e.g. taking the suffix of the last
+% m elements of the list). At the same time, this restriction 
+% enables a much easier study of decidability. Finally, osets
+% may suit many applications where lists would be an overkill.
+%
+% Thus a typical oset is {[2,a],[6,b],[4,c]} which would
+% correspond to the list [a,c,b]. The first element is 'a'
+% because 2 is the minimum of the domain of the function, 'c'
+% is the second because 4 is greater than 2 and smaller than 6,
+% and 'b' is the last element because 6 is the maximum of the
+% domain of the function. Clearly, osets admit repetitions:
+% {[2,a],[6,a],[4,c]} would correspond to the list [a,c,a].
+%
+% Note that {[2,a],[6,b],[4,c]} and {[1,a],[6,b],[4,c]} are two
+% different sets representing the same oset ([a,c,b]). So set
+% equality (i.e. =) can't be used as equality between osets.
+% The library provides oseq/2 for that purpose. It's a
+% computationally hard predicate. We believe that for
+% many applications it's seldom necessary. Furthermore, the
+% negation of oseq/2 can't be defined in {log}. Oset membership
+% and its negation are defined in this library (oin, noin).
+%
+% There's a more restricted class of osets called injective
+% ordered sets (iosets) that do not admit duplicates. The set
+% of operations defined on both are the same. Some operations
+% are deterministic only on iosets. This means that in general
+% simpler behaviors will be seen on iosets than on osets.
+%
+% The order of the set can be accessed by means of predicate
+% next/3: next(S,A,B) is true when B is the next element of A
+% in S. For instance, next({[2,a],[6,b],[4,c]},c,E) will bind E
+% to b, whereas next({[2,a],[6,b],[4,c]},b,E) will fail because
+% there's no next element w.r.t. b. next/3 is deterministic
+% only on iosets. The library provides ioset/1, noduplicates/1
+% and duplicated/2 to check for duplicates. There's also next/5
+% which is fully deterministic but it needs the positions of A
+% and B. Given that indexes in osets are hard (if possible) to
+% manage next/5 can give unintuitive results.
+%
+% In general, the library doesn't provide operations that work
+% on the indexes of osets. This is because there's no
+% significant invariant on the indexes that's preserved by the
+% operations. For example, a typical list operator is
+% extract({1,3},[a,b,c,d]) which returns [a,c] because it
+% builds a list with the elements of [a,b,c,d] in the first and
+% third position. No operator like extract is defined in this
+% library. 
+%
+% All predicates defined in this library are dealt with as
+% constraints. So no concern to "input" and "output" variables
+% apply. Then, for instance, one can use next(S,A,B) also to
+% get the element preceding B. 
+% 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+%                     *** WARNING ***
+%
+% All the predicates defined in this library *ASSUME* that 
+% arguments whose type is rel(int,W) verify oset/1. Then, you
+% may need to state oset(Q) for argument Q in many cases. For
+% example del({[a,b],[1,x]},x,T) will bind T to {[a,b]} in
+% spite that {[a,b],[1,x]} isn't an ordered set because the
+% first component of [a,b] isn't a positive natural number (in
+% fact oset({[a,b],[1,x]}) fails). If the type checker is
+% active it'll issue a type error. However, there are cases
+% where types fall short: del({[1,b],[1,x]},x,T) will bind T to
+% {[1,b]} in spite that {[1,b],[1,x]} isn't an ordered set
+% because it isn't a function; and the type checker won't be
+% able to detect that.
+% 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+sect_title(osets,"Ordered sets").
+
+para(osets,
+"Sets with order and repetitions. ^Ordered sets^ (osets) are \c
+similar to sequences or lists but:
+1- there are fewer operations defined
+2- decidability can be easily determined because all the \c
+operations are given as formulas of theories whose \c
+decidability have already been established
+
+Due to 1 we call them ordered sets (osets) instead of lists or sequences.
+
+An oset is a function from the positive naturals to some type W. \c
+The difference with lists is that the domain of an oset isn't \c
+necessarily an integer interval of the form [1,n] where n is the \c
+length of the list. For example: {[1,a],[3,b]} is an oset but is \c
+not a list or sequence as there's no ordered pair with first \c
+component equal to 2 while there's an ordered pair with first \c
+component equal to 3."
+).
+
+%
+
+:- prolog_call(op(700,xfx,[oin,noin])).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% Auxiliary predicates
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% M is the minimum index in S and Y is the first element of S
+%
+dec_pp_type(osmax(rel(int,T),int,T)).
+osmax(S,M,Y) :- [M,Y] in S & foreach([X,Z] in S, X =< M).
+
+dec_pp_type(n_osmax(rel(int,T),int,T)).
+n_osmax(S,M,Y) :- neg([M,Y] in S & foreach([X,Z] in S, X =< M)).
+
+% M is the maximum index in S and Y is the last element of S
+%
+dec_pp_type(osmin(rel(int,T),int,T)).
+osmin(S,M,Y) :- [M,Y] in S & foreach([X,Z] in S, M =< X).
+
+dec_pp_type(n_osmin(rel(int,T),int,T)).
+n_osmin(S,M,Y) :- neg([M,Y] in S & foreach([X,Z] in S, M =< X)).
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% Types
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+sect_subtitle(osets,1,"Types").
+para(osets,1,"Constraints defining ordered sets. Use these only when strictly necessary.").
+
+% An ordered set is a partial function with domain in
+% the positive naturals and range in some type T.
+% Ordered sets admit duplicates
+%
+para_item(osets,1,1,"#oset(S)#").
+para_item_desc(osets,1,1,
+  "%S% is an ordered set iff is a partial function with domain in the positive naturals").
+%
+dec_pp_type(oset(rel(int,T))).
+oset(S) :- pfun(S) & foreach([X,Y] in S, 1 =< X).
+
+% An injective ordered set is an ordered set without duplicates
+%
+para_item(osets,1,2,"#ioset(S)#").
+para_item_desc(osets,1,2,
+  "%S% is an injective ordered set iff is an injective partial function with domain in the positive naturals").
+%
+dec_pp_type(ioset(rel(int,T))).
+ioset(S) :-
+  pfun(S) & 
+  foreach([X,Y] in S, 1 =< X) &
+  foreach([[X1,Y1] in S,[X2,Y2] in S], X1 neq X2 implies Y1 neq Y2).
+%
+% another definition
+%
+para_item(osets,1,3,"#ioset_i(S)#").
+para_item_desc(osets,1,3,
+  "alternative definition for $ioset$").
+%
+dec_pp_type(ioset_i(rel(int,W))).
+ioset_i(S) :-
+  pfun(S) & 
+  foreach([X,Y] in S, 1 =< X) &
+  let([T], inv(S,T) & dec(T,rel(W,int)), pfun(T)).
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% Constructors
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+sect_subtitle(osets,2,"Constructors").
+para(osets,2,"Constraints that generates an oset from another oset.").
+
+% T is equal to S with Y added at its tail
+%
+para_item(osets,2,1,"#add(S,Y,T)#").
+para_item_desc(osets,2,1,"%T% is equal to %S% with %Y% added at its tail").
+%
+dec_pp_type(add(rel(int,W),W,rel(int,W))).
+add(S,Y,T) :-
+  S = {} & T = {[1,Y]}
+  or
+  let([M,N,_Y], 
+      osmax(S,M,_Y) & N is M + 1 & dec([M,N],int) & dec(_Y,W),
+      T = {[N,Y] / S}
+  ).
+
+% T is equal to S with all the elements equal to Y removed
+%
+para_item(osets,2,2,"#del(S,Y,T)#").
+para_item_desc(osets,2,2,"%T% is equal to %S% with all the elements equal to %Y% removed").
+%
+dec_pp_type(del(rel(int,W),W,rel(int,W))).
+del(S,Y,T) :- rares(S,{Y},T).
+
+% T is equal to S with the first occurrence of Y removed
+%
+para_item(osets,2,3,"#delf(S,Y,T)#").
+para_item_desc(osets,2,3,"%T% is equal to %S% with the first occurrence of %Y% removed").
+%
+dec_pp_type(delf(rel(int,W),W,rel(int,W))).
+delf(S,Y,T) :-
+  S = {} & T = {}
+  or
+  dec(U,rel(int,W)) & dec(M,int) &
+  rres(S,{Y},U) & osmin(U,M,Y) & diff(S,{[M,Y]},T).
+%
+% another definition
+%
+para_item(osets,2,4,"#delf_r(S,Y,T)#").
+para_item_desc(osets,2,4,"alternative definition for $delf$").
+%
+dec_pp_type(delf_r(rel(int,W),W,rel(int,W))).
+delf_r(S,Y,T) :-
+  S = {} & T = {}
+  or
+  [M,Y] in S & dec(M,int) &
+  foreach([X,V] in S, V = Y implies M =< X) &
+  diff(S,{[M,Y]},T).
+
+% T is equal to S with the last occurrence of Y removed
+%
+para_item(osets,2,5,"#dell(S,Y,T)#").
+para_item_desc(osets,2,5,"%T% is equal to %S% with the last occurrence of %Y% removed").
+%
+dec_pp_type(dell(rel(int,W),W,rel(int,W))).
+dell(S,Y,T) :-
+  S = {} & T = {}
+  or
+  dec(U,rel(int,W)) & dec(M,int) &
+  rres(S,{Y},U) & osmax(U,M,Y) & diff(S,{[M,Y]},T).
+%
+% another definition
+%
+para_item(osets,2,6,"#dell_r(S,Y,T)#").
+para_item_desc(osets,2,6,"alternative definition for $dell$").
+%
+dec_pp_type(dell_r(rel(int,W),W,rel(int,W))).
+dell_r(S,Y,T) :-
+  S = {} & T = {}
+  or
+  [M,Y] in S & dec(M,int) &
+  foreach([X,V] in S, V = Y implies X =< M) &
+  diff(S,{[M,Y]},T).
+
+% T is the tail of S (i.e. S with its head removed)
+%
+para_item(osets,2,7,"#tail(S,T)#").
+para_item_desc(osets,2,7,"%T% is the tail of %S% (i.e. %S% with its head removed)").
+%
+dec_pp_type(tail(rel(int,W),rel(int,W))).
+tail(S,T) :-
+  S = {} & T = {}
+  or
+  dec(X,int) & dec(Y,W) &
+  osmin(S,X,Y) & S = {[X,Y]/T} & [X,Y] nin T.
+
+% T is the front of S (i.e. S with its last element removed)
+%
+para_item(osets,2,8,"#front(S,T)#").
+para_item_desc(osets,2,8,"%T% is the front of %S% (i.e. %S% with its last element removed)").
+%
+dec_pp_type(front(rel(int,W),rel(int,W))).
+front(S,T) :- 
+  S = {} & T = {}
+  or
+  dec(X,int) & dec(Y,W) &
+  osmax(S,X,Y) & S = {[X,Y]/T} & [X,Y] nin T.
+
+% T is the restriction of S to SY (a set)
+%
+para_item(osets,2,9,"#filter(S,SY,T)#").
+para_item_desc(osets,2,9,"%T% is the restriction of %S% to the set %SY%").
+%
+dec_pp_type(filter(rel(int,W),set(W),rel(int,W))).
+filter(S,SY,T) :- rres(S,SY,T).
+
+% T is the subset of S from index M to index N
+%
+% T = ris([X,Y] in S, M =< X & X =< N); can't use
+% ris because relational operators can't
+%
+para_item(osets,2,10,"#extract(S,M,N,T)#").
+para_item_desc(osets,2,10,"%T% is the subset of %S% from index %M% to index %N%").
+%
+dec_pp_type(extract(rel(int,W),int,int,rel(int,W))).
+extract(S,M,N,T) :-
+  foreach([X,Y] in T, [X,Y] in S & M =< X & X =< N) &
+  foreach([X,Y] in S, M =< X & X =< N implies [X,Y] in T).
+
+% U is equal to the concatenation of S and T
+%
+% Z = ris([X,Y] in T,[V],true,[V,Y],V is X + M)
+% can't use ris because relational operators can't
+%
+para_item(osets,2,11,"#concat(S,T,U)#").
+para_item_desc(osets,2,11,"%U% is equal to the concatenation of %S% with %T%").
+%
+dec_pp_type(concat(rel(int,W),rel(int,W),rel(int,W))).
+concat(S,T,U) :-
+  S = {} & U = T
+  or
+  dec(M,int) & dec(_Y,W) & 
+  osmax(S,M,_Y) &
+  dec(Z,rel(int,W)) &
+  foreach([X,Y] in T, let([V],V is X + M & dec(V,int), [V,Y] in Z)) &
+  foreach([X,Y] in Z, let([V],V is X - M & dec(V,int), [V,Y] in T)) &
+  un(S,Z,U).
+
+% T is the oset with all the elements of S
+% before the first occurrence of Y (which is an element of S)
+% if Y isn't an element of S, the operation fails
+%
+% T = ris([X,Y] in S, A < M); can't use ris because
+% relational operators can't
+%
+para_item(osets,2,12,"#prefix(S,Y,T)#").
+para_item_desc(osets,2,12,"%T% is the prefix of %S% before the first occurrence of  %Y%; if %Y% isn't an element of %S% the operation fails.").
+%
+dec_pp_type(prefix(rel(int,W),W,rel(int,W))).
+prefix(S,Y,T) :-
+  [M,Y] in S & dec(M,int) &
+  foreach([X,V] in S, V = Y implies M =< X) &                 % Y occurs first in M
+  foreach([A,B] in T, [A,B] in S & A < M) &
+  foreach([A,B] in S, A < M implies [A,B] in T).
+
+% T is the oset with all the elements of S
+% after the last occurrence of Y (which is an element of S)
+% if Y isn't an element of S, the operation fails
+%
+% T = ris([X,Y] in S, M < A); can't use ris because
+% relational operators can't
+%
+para_item(osets,2,13,"#suffix(S,Y,T)#").
+para_item_desc(osets,2,13,"%T% is the suffix of %S% after the first occurrence of  %Y%; if %Y% isn't an element of %S% the operation fails.").
+%
+dec_pp_type(suffix(rel(int,W),W,rel(int,W))).
+suffix(S,Y,T) :-
+  [M,Y] in S & dec(M,int) &
+  foreach([X,V] in S, V = Y implies X =< M) &                 % Y occurs last in M
+  foreach([A,B] in T, [A,B] in S & M < A) &
+  foreach([A,B] in S, M < A implies [A,B] in T).
+
+% A and B are elements of S
+% T is equal to S but with A and B exchanging positions
+% if A or B aren't elements of S, the operation fails
+% non-deterministic due to repetitions
+% deterministic if ioset(S)
+% locally deterministic if neg(duplicated(S,A)) & neg(duplicated(S,B))
+%
+para_item(osets,2,14,"#switch(S,A,B,T)#").
+para_item_desc(osets,2,14,
+"%T% is equal to %S% but with %A% and %B% exchanging positions
+if %A% or %B% aren't elements of S, the operation fails
+non-deterministic due to repetitions
+deterministic if #ioset(S)#
+locally deterministic if neg(duplicated(S,A)) & neg(duplicated(S,B))"
+).
+%
+dec_pp_type(switch(rel(int,W),W,W,rel(int,W))).
+switch(S,A,B,T) :-
+  dec([X1,X2],int) & dec(U,rel(int,W)) &
+  S = {[X1,A],[X2,B]/U} &
+  T = {[X1,B],[X2,A]/U} & comp({[X1,X1]},U,{}) & comp({[X2,X2]},U,{}).
+%
+% another definition
+%
+para_item(osets,2,15,"#switch_n(S,A,B,T)#").
+para_item_desc(osets,2,15,"alternative definition for $switch$").
+%
+dec_pp_type(switch_n(rel(int,W),W,W,rel(int,W))).
+switch_n(S,A,B,T) :-
+  exists([[X1,Y1] in S,[X2,Y2] in S],
+         Y1 = A & Y2 = B & 
+         let([U],
+             diff(S,{[X1,Y1],[X2,Y2]},U) & dec(U,rel(int,W)),
+             T = {[X1,Y2],[X2,Y1]/U} & comp({[X1,X1]},U,{}) & comp({[X2,X2]},U,{})
+         )
+ ).
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% Observers
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+sect_subtitle(osets,3,"Observers").
+para(osets,3,"Constraints that return information about one or more osets.").
+
+% True when S and T are the same ordered set
+% That is, both of them represent the same list
+%
+para_item(osets,3,1,"#oseq(S,T)#").
+para_item_desc(osets,3,1,"True when %S% and %T% are the same ordered set. That is, both of them represent the same list.").
+%
+dec_pp_type(oseq(rel(int,W),rel(int,W))).
+oseq(S,T) :-
+  dom(S,DS) & dom(T,DT) & dec([DS,DT],set(int)) &
+  pfun(F) & inv(F,G) & pfun(G) & dom(F,DT) & ran(F,DS) & dec([F,G],rel(int,int)) &
+  foreach([[X1,Y1] in F, [X2,Y2] in F], X1 =< X2 implies Y1 =< Y2) &
+  comppf(F,S,T).
+
+% True when S and T are two different iosets
+% CHECK!!!
+% Guess repetitions make it impossible a similar
+% definition for osets
+%
+para_item(osets,3,2,"#nioseq(S,T)#").
+para_item_desc(osets,3,2,"True when %S% and %T% are two different $ioset$").
+%
+dec_pp_type(nioseq(rel(int,W),rel(int,W))).
+nioseq(S,T) :-
+  dec(Y,W) &
+  (comp(S,{[Y,Y]},{}) & ncomp(T,{[Y,Y]},{})    % Y in ran(S) & Y nin ran(T)
+   or
+   ncomp(S,{[Y,Y]},{}) & comp(T,{[Y,Y]},{})    % Y nin ran(S) & Y in ran(T)
+   or
+   dec([M,N,K,J],int) & dec([Y1,Y2],W) &
+   [M,Y1] in S & [N,Y2] in S & M < N &         % Y1 before Y2 in S
+   [K,Y1] in T & [J,Y2] in T & J < K           % Y1 after  Y2 in T
+  ).
+
+% Y is an element of S
+% i.e. Y is an element of the range of S
+%
+para_item(osets,3,3,"#oin(Y,S)#").
+para_item_desc(osets,3,3,"%Y% is an element of %S%").
+%
+dec_pp_type(oin(W,rel(int,W))).
+oin(Y,S) :- [M,Y] in S & dec(M,int).
+%
+% another definition
+%
+para_item(osets,3,4,"#oin_c(Y,S)#").
+para_item_desc(osets,3,4,"alternative definition for $oin$").
+%
+dec_pp_type(oin_c(W,rel(int,W))).
+oin_c(Y,S) :- ncomp(S,{[Y,Y]},{}).
+%
+% another definition
+%
+para_item(osets,3,5,"#oin_e(Y,S)#").
+para_item_desc(osets,3,5,"alternative definition for $oin$").
+%
+dec_pp_type(oin_e(W,rel(int,W))).
+oin_e(Y,S) :- exists([X,V] in S, V = Y).
+%
+% another definition
+%
+para_item(osets,3,6,"#oin_r(Y,S)#").
+para_item_desc(osets,3,6,"alternative definition for $oin$").
+%
+dec_pp_type(oin_r(W,rel(int,W))).
+oin_r(Y,S) :- let([R], ran(S,R) & dec(R,set(W)), Y in R).
+
+% Y is not an element of S
+%
+para_item(osets,3,7,"#n_oin(Y,S)#").
+para_item_desc(osets,3,7,"%Y% is not an element of %S%; negation of $oin$").
+%
+dec_pp_type(n_oin(W,rel(int,W))).
+n_oin(Y,S) :- comp(S,{[Y,Y]},{}).
+
+% Y is an element of S with index M
+% i.e. [M,Y] belongs to S
+%
+para_item(osets,3,8,"#oin(M,Y,S)#").
+para_item_desc(osets,3,8,"%Y% is an element of %S% with index %M%").
+%
+dec_pp_type(oin(int,W,rel(int,W))).
+oin(M,Y,S) :- [M,Y] in S & dec(M,int).
+
+% Y is the first element of S
+% if S is empty the operation fails
+%
+para_item(osets,3,9,"#head(S,Y)#").
+para_item_desc(osets,3,9,"%Y% is the first element of %S%").
+%
+dec_pp_type(head(rel(int,T),T)).
+head(S,Y) :- osmin(S,_M,Y) & dec(_M,int).
+
+para_item(osets,3,26,"#n_head(S,Y)#").
+para_item_desc(osets,3,26,"%negation of $head$/2").
+%
+dec_pp_type(n_head(rel(int,T),T)).
+n_head(S,Y) :- osmin(S,_M,X) & Y neq X & dec(_M,int) & dec(X,T).
+
+% Y is the first element of S and its index is M
+% if S is empty the operation fails
+% if M is not the index of Y, the operation fails
+%
+para_item(osets,3,10,"#head(S,M,Y)#").
+para_item_desc(osets,3,10,"%Y% is the first element of %S% and its index is %M%").
+%
+dec_pp_type(head(rel(int,T),int,T)).
+head(S,M,Y) :- osmin(S,M,Y).
+
+% Y is the last element of S
+% if S is empty the operation fails
+%
+para_item(osets,3,11,"#last(S,Y)#").
+para_item_desc(osets,3,11,"%Y% is the last element of %S%").
+%
+dec_pp_type(last(rel(int,T),T)).
+last(S,Y) :- osmax(S,_M,Y) & dec(_M,int).
+
+para_item(osets,3,27,"#n_last(S,Y)#").
+para_item_desc(osets,3,27,"negation of $last$/2").
+%
+dec_pp_type(n_last(rel(int,T),T)).
+n_last(S,Y) :- osmax(S,_M,X) & X neq Y & dec(_M,int) & dec(X,T).
+
+% Y is the last element of S and its index is M
+% if S is empty the operation fails
+% if M is not the index of Y, the operation fails
+%
+para_item(osets,3,12,"#last(S,M,Y)#").
+para_item_desc(osets,3,12,"%Y% is the last element of %S% and its index is %M%").
+%
+dec_pp_type(last(rel(int,T),int,T)).
+last(S,M,Y) :- osmax(S,M,Y).
+
+% B is after A in S
+% non-deterministic due to repetitions
+% deterministic if ioset(S)
+% locally deterministic if neg(duplicated(S,A)) & neg(duplicated(S,B))
+%
+para_item(osets,3,13,"#after(S,A,B)#").
+para_item_desc(osets,3,13,"%B% is after %A% in %S%").
+%
+dec_pp_type(after(rel(int,T),T,T)).
+after(S,A,B) :- [Xa,A] in S & [Xb,B] in S & Xa < Xb & dec([Xa,Xb],int).
+%
+% another definition
+%
+para_item(osets,3,13,"#after_e(S,A,B)#").
+para_item_desc(osets,3,13,"alternative definition for $after$").
+%
+dec_pp_type(after_e(rel(int,T),T,T)).
+after_e(S,A,B) :- exists([[X1,Y1] in S, [X2,Y2] in S], X1 < X2 & Y1 = A & Y2 = B).
+
+para_item(osets,3,28,"#n_after(S,A,B)#").
+para_item_desc(osets,3,28,"negation of $after$/3").
+%
+dec_pp_type(n_after(rel(int,T),T,T)).
+n_after(S,A,B) :- neg(after_e(S,A,B)).
+
+% B is the next element of A in S 
+% non-deterministic due to repetitions
+% deterministic if ioset(S)
+% locally deterministic if neg(duplicated(S,A))
+%
+para_item(osets,3,14,"#next(S,A,B)#").
+para_item_desc(osets,3,14,
+"%B% is the next element of %A% in %S%
+non-deterministic due to repetitions
+deterministic if ioset(S)
+locally deterministic if neg(duplicated(S,A))"
+).
+%
+dec_pp_type(next(rel(int,T),T,T)).
+next(S,A,B) :-
+  dec([Xa,Xb],int) & dec(U,rel(int,T)) &
+  S = {[Xa,A],[Xb,B]/U} & [Xa,A] nin U & [Xb,B] nin U & 
+  Xa < Xb & 
+  foreach([X,Y] in U, neg(Xa =< X & X =< Xb)).
+%
+% another definition
+%
+para_item(osets,3,15,"#next_e(S,A,B)#").
+para_item_desc(osets,3,15,"alternative definition for $next$").
+%
+dec_pp_type(next_e(rel(int,T),T,T)).
+next_e(S,A,B) :-
+  exists([[X1,Y1] in S, [X2,Y2] in S],
+         X1 < X2 & Y1 = A & Y2 = B &
+         foreach([X,Y] in S, X neq X1 & X neq X2 implies (X < X1 or X2 < 2))
+  ).
+
+para_item(osets,3,16,"#n_next(S,A,B)#").
+para_item_desc(osets,3,16,"negation of $next$").
+%
+dec_pp_type(n_next(rel(int,T),T,T)).
+n_next(S,A,B) :-
+  neg(
+    exists([[X1,Y1] in S, [X2,Y2] in S],
+           X1 < X2 & Y1 = A & Y2 = B &
+           foreach([X,Y] in S, X neq X1 & X neq X2 implies (X < X1 or X2 < 2))
+    )
+  ).
+
+% if A occurs in position M, then B, occuring in position N,
+%    is the next element of A in S 
+%
+para_item(osets,3,17,"#next(S,M,A,N,B)#").
+para_item_desc(osets,3,17,"if %A% occurs in position %M%, then %B%, occuring in position %N%, is the next element of %A% in %S%").
+%
+dec_pp_type(next(rel(int,T),int,T,int,T)).
+next(S,M,A,N,B) :-
+  S = {[M,A],[N,B]/U} & [M,A] nin U & [N,B] nin U & dec(U,rel(int,T)) &
+  M < N & 
+  foreach([X,Y] in U, neg(M =< X & X =< N)).
+%
+% another definition
+%
+para_item(osets,3,18,"#next_e(S,M,A,N,B)#").
+para_item_desc(osets,3,18,"alternative definition for $next$/5").
+%
+dec_pp_type(next_e(rel(int,T),int,T,int,T)).
+next_e(S,M,A,N,B) :-
+  exists([[X1,Y1] in S, [X2,Y2] in S],
+         X1 = M & Y1 = A & X2 = N & Y2 = B & X1 < X2 & 
+         foreach([X,Y] in S, X neq X1 & X neq X2 implies (X < X1 or X2 < X))
+  ).
+
+para_item(osets,3,19,"#n_next(S,M,A,N,B)#").
+para_item_desc(osets,3,19,"negation of $next$/5").
+%
+dec_pp_type(n_next(rel(int,T),int,T,int,T)).
+n_next(S,M,A,N,B) :-
+  neg(
+    exists([[X1,Y1] in S, [X2,Y2] in S],
+           X1 = M & Y1 = A & X2 = N & Y2 = B & X1 < X2 & 
+           foreach([X,Y] in S, X neq X1 & X neq X2 implies (X < X1 or X2 < 2))
+    )
+  ).
+
+% S is a sorted ordered set
+% it only makes sense when the range of S is int
+%
+para_item(osets,3,20,"#sorted(S)#").
+para_item_desc(osets,3,20,"%S% is a sorted ordered set").
+%
+dec_pp_type(sorted(rel(int,int))).
+sorted(S) :- foreach([[I1,E1] in S,[I2,E2] in S], (I1 =< I2 implies E1 =< E2)).
+
+% Y is duplicated in S
+%
+para_item(osets,3,21,"#duplicated(S,Y)#").
+para_item_desc(osets,3,21,"%Y% is duplicated in %S%").
+%
+dec_pp_type(duplicated(rel(int,W),W)).
+duplicated(S,Y) :- [X1,Y] in S & [X2,Y] in S & X1 neq X2 & dec([X1,X2],int).
+%
+% another definition
+%
+para_item(osets,3,22,"#duplicated_e(S,Y)#").
+para_item_desc(osets,3,22,"alternative definition for $duplicated$").
+%
+dec_pp_type(duplicated_e(rel(int,W),W)).
+duplicated_e(S,Y) :- exists([[X1,Y1] in S,[X2,Y2] in S], X1 neq X2 & Y1 = Y & Y2 = Y).
+
+para_item(osets,3,23,"#n_duplicated(S,Y)#").
+para_item_desc(osets,3,23,"negation of $duplicated$").
+%
+dec_pp_type(n_duplicated(rel(int,W),W)).
+n_duplicated(S,Y) :-
+  neg(exists([[X1,Y1] in S,[X2,Y2] in S], X1 neq X2 & Y1 = Y & Y2 = Y)).
+
+% S has no duplicate elements
+%
+para_item(osets,3,24,"#noduplicates(S)#").
+para_item_desc(osets,3,24,"%S% has no duplicate elements").
+%
+dec_pp_type(noduplicates(rel(int,W))).
+noduplicates(S) :- foreach([[X1,Y1] in S,[X2,Y2] in S], X1 neq X2 implies Y1 neq Y2).
+%
+% another definition
+%
+para_item(osets,3,25,"#noduplicates_i(S)#").
+para_item_desc(osets,3,25,"alternative definition for $noduplicates$").
+%
+dec_pp_type(noduplicates_i(rel(int,W))).
+noduplicates_i(S) :- let([T], inv(S,T) & dec(T,rel(W,int)), pfun(T)).
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,150 @@
+prestarLibro_ts_1(L,S,Libros,CantPrestada,Prestamos,Limite) :-
+  _83328 is _83480+1 &
+  applyTo(CantPrestada,L,_83480) &
+  dec([_83480,_83328],int) &
+  _83542>_83544 &
+  applyTo(Libros,L,_83542) &
+  applyTo(CantPrestada,L,_83544) &
+  dec([_83544,_83542],int) &
+  L in _83350 &
+  dom(Libros,_83350) &
+  dec(_83350,set(isbn)) &
+  S nin _83370 &
+  dom(Prestamos,_83370) &
+  dec(_83370,set(nrosocio)).
+
+prestarLibro_tc_1(L,S,Libros,CantPrestada,Prestamos,Limite) :-
+  CantPrestada={[isbn:n1,-1]} &
+  L=isbn:n1 &
+  Libros={[isbn:n1,0]} &
+  S=nrosocio:n0 &
+  Prestamos={}.
+
+prestarLibro_ts_24(L,S,Libros,CantPrestada,Prestamos,Limite) :-
+  add(_83848,L,_83748) &
+  dec(_83748,seqisbn) &
+  _83796 is _83976+1 &
+  applyTo(CantPrestada,L,_83976) &
+  dec([_83976,_83796],int) &
+  _84038>_84040 &
+  applyTo(Libros,L,_84038) &
+  applyTo(CantPrestada,L,_84040) &
+  dec([_84040,_84038],int) &
+  L in _83818 &
+  dom(Libros,_83818) &
+  dec(_83818,set(isbn)) &
+  Limite>_83838 &
+  size(_83848,_83838) &
+  dec(_83838,int) &
+  applyTo(Prestamos,S,_83848) &
+  dec(_83848,seqisbn) &
+  S in _83858 &
+  dom(Prestamos,_83858) &
+  dec(_83858,set(nrosocio)) &
+  Prestamos neq {} &
+  {[S,_83748]}neq{} &
+  let([_85120,_85126],dom(Prestamos,_85120)&dom({[S,_83748]},_85126),_85120=_85126).
+
+prestarLibro_tc_24(L,S,Libros,CantPrestada,Prestamos,Limite) :-
+  L=isbn:n1 &
+  CantPrestada={[isbn:n1,-1]} &
+  Libros={[isbn:n1,0]} &
+  Limite=1 &
+  Prestamos={[nrosocio:n0,{}]} &
+  S=nrosocio:n0.
+
+prestarLibro_ts_25(L,S,Libros,CantPrestada,Prestamos,Limite) :-
+  add(_83848,L,_83748) &
+  dec(_83748,seqisbn) &
+  _83796 is _83976+1 &
+  applyTo(CantPrestada,L,_83976) &
+  dec([_83976,_83796],int) &
+  _84038>_84040 &
+  applyTo(Libros,L,_84038) &
+  applyTo(CantPrestada,L,_84040) &
+  dec([_84040,_84038],int) &
+  L in _83818 &
+  dom(Libros,_83818) &
+  dec(_83818,set(isbn)) &
+  Limite>_83838 &
+  size(_83848,_83838) &
+  dec(_83838,int) &
+  applyTo(Prestamos,S,_83848) &
+  dec(_83848,seqisbn) &
+  S in _83858 &
+  dom(Prestamos,_83858) &
+  dec(_83858,set(nrosocio)) &
+  Prestamos neq {} &
+  {[S,_83748]}neq{} &
+  let([_85206,_85212],dom(Prestamos,_85206)&dom({[S,_83748]},_85212),subset(_85212,_85206)&_85206 neq _85212).
+
+prestarLibro_tc_25(L,S,Libros,CantPrestada,Prestamos,Limite) :-
+  L=isbn:n3 &
+  CantPrestada={[isbn:n3,-1]} &
+  Libros={[isbn:n3,0]} &
+  Limite=1 &
+  Prestamos={[nrosocio:n0,{}],[nrosocio:n1,{[2,isbn:n2]}]} &
+  S=nrosocio:n0.
+
+prestarLibro_ts_31(L,S,Libros,CantPrestada,Prestamos,Limite) :-
+  _84274>=Limite &
+  size(_84290,_84274) &
+  dec(_84274,int) &
+  applyTo(Prestamos,S,_84290) &
+  dec(_84290,seqisbn) &
+  S in _84300 &
+  dom(Prestamos,_84300) &
+  dec(_84300,set(nrosocio)) &
+  Limite<1.
+
+prestarLibro_tc_31(L,S,Libros,CantPrestada,Prestamos,Limite) :-
+  Limite=0 &
+  Prestamos={[nrosocio:n0,{}]} &
+  S=nrosocio:n0.
+
+prestarLibro_ts_32(L,S,Libros,CantPrestada,Prestamos,Limite) :-
+  _84274>=Limite &
+  size(_84290,_84274) &
+  dec(_84274,int) &
+  applyTo(Prestamos,S,_84290) &
+  dec(_84290,seqisbn) &
+  S in _84300 &
+  dom(Prestamos,_84300) &
+  dec(_84300,set(nrosocio)) &
+  Limite=1.
+
+prestarLibro_tc_32(L,S,Libros,CantPrestada,Prestamos,Limite) :-
+  Limite=1 &
+  Prestamos={[nrosocio:n0,{[1,isbn:n1]}]} &
+  S=nrosocio:n0.
+
+prestarLibro_ts_33(L,S,Libros,CantPrestada,Prestamos,Limite) :-
+  _84274>=Limite &
+  size(_84290,_84274) &
+  dec(_84274,int) &
+  applyTo(Prestamos,S,_84290) &
+  dec(_84290,seqisbn) &
+  S in _84300 &
+  dom(Prestamos,_84300) &
+  dec(_84300,set(nrosocio)) &
+  1<Limite.
+
+prestarLibro_tc_33(L,S,Libros,CantPrestada,Prestamos,Limite) :-
+  Limite=2 &
+  Prestamos={[nrosocio:n2,{[0,isbn:n0],[1,isbn:n1]}]} &
+  S=nrosocio:n2.
+
+prestarLibro_ts_4(L,S,Libros,CantPrestada,Prestamos,Limite) :-
+  _84532=_84534 &
+  applyTo(Libros,L,_84534) &
+  applyTo(CantPrestada,L,_84532) &
+  dec([_84532,_84534],int) &
+  L in _84494 &
+  dom(Libros,_84494) &
+  dec(_84494,set(isbn)).
+
+prestarLibro_tc_4(L,S,Libros,CantPrestada,Prestamos,Limite) :-
+  Libros={[isbn:n0,1]} &
+  L=isbn:n0 &
+  CantPrestada={[isbn:n0,1]}.
+

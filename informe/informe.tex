@@ -1,0 +1,563 @@
+\documentclass{article}
+\usepackage{zed-csp}
+\usepackage{graphicx}
+\usepackage{setspace}
+\usepackage{amsthm}
+\newtheorem*{nota}{Nota}
+
+\begin{document}
+
+\begin{titlepage}
+\centering
+
+{\Large Ingeniería de Software}\\[0.3cm]
+{\Large Trabajo Práctico}
+
+\vspace{2cm}
+
+\includegraphics[width=0.3\textwidth]{logo-unr.png}
+
+\vspace{2cm}
+
+{\LARGE
+\begin{spacing}{1.2}
+\textbf{Especificación y verificación de un sistema de gestión de préstamos de una biblioteca}
+\end{spacing}
+}
+
+\vspace{2.5cm}
+
+{\Large Gianfranco Polinesi}
+
+\vspace{1cm}
+
+{\Large Abril 2026}
+
+\vfill
+
+\end{titlepage}
+\section{Requerimientos}
+Se quiere desarrollar un sistema de gestión de libros prestados para una biblioteca. Cada libro es identificado por su ISBN. Se debe llevar un registro de los libros que posee la biblioteca y proveer operaciones para dar de alta o de baja ejemplares de estos libros. Si un libro es prestado, deberá quedar registrado el número del socio a quien fue prestado el libro. El sistema debe estar parametrizado por una cantidad límite de libros que un socio puede retirar.
+Las funcionalidades que se especificarán serán:
+\begin{itemize}
+    \item dar de alta una cierta cantidad de ejemplares de un libro
+    \item marcar un ejemplar del libro como prestado
+    \item consultar cuántos ejemplares de un libro hay disponibles para préstamo
+\end{itemize}
+
+\section{Especificación}
+\subsubsection*{Designaciones}
+\begin{itemize}
+\item[] $i$ es un ISBN $\approx i \in ISBN$
+\item[] $s$ es un número de socio $\approx i \in NROSOCIO$
+\item[] Cantidad de ejemplares de un libro $l$ que pertenece a la biblioteca $\approx libros~l$
+\item[] Cantidad prestada de un libro $l$ $\approx cantPrestada~l$
+\item[] Libros prestados al socio $s$ $\approx prestamos~s$
+\item[] Límite de libros que un socio puede retirar a la vez $\approx limite$
+\end{itemize}
+
+\subsubsection*{Tipos básicos y definiciones axiomáticas}
+\begin{zed}
+[ISBN, NROSOCIO]
+\end{zed}
+
+Se define un tipo para los mensajes de salida de las operaciones:
+\begin{syntax}
+MSJ & ::= & ok | noexiste | nodisponible | excedelimite
+\end{syntax}
+
+\begin{axdef}
+    limite : \num
+\where
+    limite > 0
+\end{axdef}
+
+\subsubsection*{Variables de estado, estado inicial e invariante}
+
+\begin{schema}{Biblioteca}
+libros: ISBN \pfun \nat \\
+cantPrestada: ISBN \pfun \nat \\
+prestamos: NROSOCIO \pfun \seq ISBN
+\end{schema}
+
+¿Por qué el codominio de $prestamos$ es $\seq ISBN$ y no $\power ISBN$? Se quiere contemplar los casos en los que un socio retira más de un ejemplar de un mismo libro. Esto no se podría hacer con un conjunto. Se utiliza una secuencia porque admite elementos repetidos.
+
+\begin{schema}{BibliotecaInit}
+Biblioteca
+\where
+libros = \emptyset \\
+cantPrestada = \emptyset \\
+prestamos = \emptyset
+\end{schema}
+
+\begin{schema}{BibliotecaInv}
+Biblioteca
+\where
+\dom cantPrestada = \dom libros
+\end{schema}
+
+\subsubsection*{Operación de alta}
+
+\begin{schema}{AltaLibroNuevo}
+\Delta Biblioteca \\
+l? : ISBN \\ 
+n? : \nat \\
+\where
+l? \notin \dom libros \\
+libros' = libros \cup \{l? \mapsto n?\} \\
+cantPrestada' = cantPrestada \cup \{l? \mapsto 0\} \\
+prestamos' = prestamos
+\end{schema}
+
+\begin{schema}{AltaLibroExistente}
+\Delta Biblioteca \\
+l? : ISBN \\ 
+n? : \nat \\
+\where
+l? \in \dom libros \\
+libros' = libros \oplus \{ l? \mapsto libros~l? + n?\}\\
+cantPrestada' = cantPrestada \\
+prestamos' = prestamos
+\end{schema}
+
+\begin{zed}
+AltaLibro \defs AltaLibroNuevo \lor AltaLibroExistente
+\end{zed}
+
+\subsubsection*{Operación de consulta}
+
+\begin{schema}{ConsultaDisponibilidadOk}
+\Xi Biblioteca \\
+l? : ISBN \\ 
+n! : \nat \\
+m! : MSJ \\
+\where 
+l? \in \dom libros \\
+cantPrestada~l? \leq libros~l? \\
+n! = libros~l? - cantPrestada~l? \\
+m! = ok
+\end{schema}
+
+\begin{schema}{LibroNoExiste}
+\Xi Biblioteca \\
+l? : ISBN \\ 
+m! : MSJ \\
+\where
+l? \notin \dom libros \\
+m! = noexiste \\
+\end{schema}
+
+\begin{zed}
+ConsultaDisponibilidad \defs ConsultaDisponibilidadOk \lor LibroNoExiste
+\end{zed}
+
+\subsubsection*{Operación de préstamo}
+
+Hay dos casos exitosos para la operación $PrestarLibro$: uno cuando el socio retira un libro por primera vez (y no está en el dominio de $prestamos$) y otro en caso contrario.
+
+\begin{schema}{PrestarLibroOkSocioNuevo}
+\Delta Biblioteca \\
+l? : ISBN \\ 
+s? : NROSOCIO \\
+m! : MSJ \\
+\where
+s? \notin \dom prestamos \\
+l? \in \dom libros \\
+cantPrestada~l? < libros~l? \\
+libros' = libros \\
+cantPrestada' = cantPrestada \oplus \{l? \mapsto (cantPrestada~l? + 1)\} \\
+prestamos' = prestamos \oplus \{s? \mapsto \langle l?\rangle\} \\
+m! = ok \\
+\end{schema}
+
+\begin{schema}{PrestarLibroOkSocioExiste}
+\Delta Biblioteca \\
+l? : ISBN \\ 
+s? : NROSOCIO \\
+m! : MSJ \\
+\where
+s? \in \dom prestamos \\
+\#(prestamos~s?) < limite \\
+l? \in \dom libros \\
+cantPrestada~l? < libros~l? \\
+libros' = libros \\
+cantPrestada' = cantPrestada \oplus \{l? \mapsto (cantPrestada~l? + 1)\} \\
+prestamos' = prestamos \oplus \{s? \mapsto prestamos~s? \cat \langle l? \rangle\} \\
+m! = ok \\
+\end{schema}
+
+\begin{syntax}
+PrestarLibroOk & \defs & PrestarLibroOkSocioNuevo \lor PrestarLibroOkSocioExiste
+\end{syntax}
+
+\begin{schema}{SocioExcedeLimite}
+\Xi Biblioteca \\
+s? : NROSOCIO \\
+m! : MSJ \\
+\where
+s? \in \dom prestamos \\
+\#(prestamos~s?) \geq limite \\
+m! = excedelimite \\
+\end{schema}
+
+\begin{schema}{LibroNoDisponible}
+\Xi Biblioteca \\
+l? : ISBN \\ 
+m! : MSJ \\
+\where
+l? \in \dom libros \\
+cantPrestada~l? = libros~l? \\
+m! = nodisponible \\
+\end{schema}
+
+\begin{syntax}
+PrestarLibro & \defs & PrestarLibroOk \lor \\
+&& SocioExcedeLimite \lor LibroNoDisponible \lor LibroNoExiste \\
+\end{syntax}
+
+\section{Traducción a \set{log}}
+\sloppy La traducción de la especificación se encuentra en el archivo \texttt{biblioteca.slog}.
+Como se utilizan secuencias, es necesario cargar la librería \texttt{osets.slog} antes de consultar el archivo.
+
+Al descargar las condiciones de verificación, se crea el archivo \texttt{biblioteca-vc.slog}. Para poder consultarlo exitosamente, fue necesario editarlo y agregarle la línea
+\begin{verbatim}
+    :- add_lib("osets.slog").
+\end{verbatim}
+
+\section{Simulaciones}
+Al existir un parámetro en la especificación, antes de poder realizar alguna simulación, se debe utilizar el comando:
+\begin{verbatim*}
+setpp(limite_1).
+\end{verbatim*}
+
+\subsection{Entorno NEXT}
+\subsubsection*{Simulación 1}
+Agregar un libro nuevo, luego un libro existente
+
+\begin{verbatim}
+[initial]:[invTipo, bibliotecaInv] 
+>> altaLibro(L:"9788420471839", N:[[2, 1]]) 
+>> consultarLibro(L:"9788420471839").
+\end{verbatim}
+
+\begin{verbatim}
+Execution trace is:
+Libros = {},  
+CantPrestada = {},  
+Prestamos = {}
+  ----> altaLibro(L:"9788420471839",N:2)
+Libros = {[9788420471839,2]},  
+CantPrestada = {[9788420471839,0]},  
+Prestamos = {}
+  ----> altaLibro(L:"9788420471839",N:1)
+Libros = {[9788420471839,2],[9788420471839,1]},  
+CantPrestada = {[9788420471839,0]},  
+Prestamos = {}
+  invTipo check failed
+  ----> consultarLibro(L:"9788420471839") failed, execution 
+aborted
+\end{verbatim}
+
+Se observa que se rompe el invariante de que \texttt{Libros} es función (el libro aparece dos veces en el dominio)
+
+Al revisar la definición de \texttt{altaLibroNuevo}, se descubrió que faltó establecer \texttt{DomLibros} como el dominio de \texttt{Libros}:
+
+\begin{verbatim}
+altaLibroNuevo(Libros, CantPrestada, Prestamos, L, N, Libros_, 
+    CantPrestada_, Prestamos_) :-
+        dec(DomLibros, set(isbn)) & L nin DomLibros
+        & N >= 0
+        & un(Libros, {[L, N]}, Libros_)
+        & un(CantPrestada, {[L, 0]}, CantPrestada_)
+        & Prestamos_ = Prestamos.
+\end{verbatim}
+
+Se agregó \verb|dom(Libros, DomLibros)| y se volvió a correr la simulación:
+
+\begin{verbatim}
+Execution trace is:
+Libros = {},  
+CantPrestada = {},  
+Prestamos = {}
+  ----> altaLibro(L:"9788420471839",N:2)
+Libros = {[9788420471839,2]},  
+CantPrestada = {[9788420471839,0]},  
+Prestamos = {}
+  ----> altaLibro(L:"9788420471839",N:1)
+Libros = {[9788420471839,1]},  
+CantPrestada = {[9788420471839,0]},  
+Prestamos = {}
+  ----> consultarLibro(L:"9788420471839")
+Libros = {[9788420471839,1]},  
+CantPrestada = {[9788420471839,0]},  
+Prestamos = {},  
+N = 1,  
+M = ok
+\end{verbatim}
+
+El resultado es \texttt{N = 1}, pero se esperaba \texttt{N = 3}.
+Esto reveló un error en la definición de \texttt{altaLibroExistente}. Faltaba sumar la cantidad de libros existentes.
+Luego de corregir ese error, el resultado de la simulación es:
+
+\begin{verbatim}
+Execution trace is:
+Libros = {},  
+CantPrestada = {},  
+Prestamos = {}
+  ----> altaLibro(L:"9788420471839",N:2)
+Libros = {[9788420471839,2]},  
+CantPrestada = {[9788420471839,0]},  
+Prestamos = {}
+  ----> altaLibro(L:"9788420471839",N:1)
+Libros = {[9788420471839,3]},  
+CantPrestada = {[9788420471839,0]},  
+Prestamos = {}
+  ----> consultarLibro(L:"9788420471839")
+Libros = {[9788420471839,3]},  
+CantPrestada = {[9788420471839,0]},  
+Prestamos = {},  
+N = 3,  
+M = ok
+\end{verbatim}
+
+Como se esperaba.
+
+\subsubsection*{Simulación 2}
+Simulaciones que involucran \texttt{prestarLibroOk} y \texttt{socioExcedeLimite}
+\begin{verbatim}
+[initial]:[invTipo, bibliotecaInv] 
+>> altaLibro(L:[["9788420471839", "9788432320767"]], N:[[2, 1]]) 
+>> prestarLibro(L:[["9788420471839", "9788432320767"]],
+    S:"P-4540/3").
+\end{verbatim}
+
+\begin{verbatim}
+Parameters:
+Limite = 1
+
+Execution trace is:
+Libros = {},  
+CantPrestada = {},  
+Prestamos = {}
+  ----> altaLibro(L:"9788420471839",N:2)
+Libros = {[9788420471839,2]},  
+CantPrestada = {[9788420471839,0]},  
+Prestamos = {}
+  ----> altaLibro(L:"9788432320767",N:1)
+Libros = {[9788420471839,2],[9788432320767,1]},  
+CantPrestada = {[9788420471839,0],[9788432320767,0]},  
+Prestamos = {}
+  ----> prestarLibro(L:"9788420471839",S:"P-4540/3")
+M = ok,  
+Libros = {[9788420471839,2],[9788432320767,1]},  
+CantPrestada = {[9788432320767,0],[9788420471839,1]},  
+Prestamos = {[P-4540/3,{[1,9788420471839]}]}
+  ----> prestarLibro(L:"9788432320767",S:"P-4540/3")
+M = excede_limite,  
+Libros = {[9788420471839,2],[9788432320767,1]},  
+CantPrestada = {[9788432320767,0],[9788420471839,1]},  
+Prestamos = {[P-4540/3,{[1,9788420471839]}]}
+\end{verbatim}
+
+Notar que el resultado es \texttt{excede\_limite}, como se esperaba. Si se cambia el parámetro límite con:
+\begin{verbatim}
+setpp(limite_2).
+\end{verbatim}
+y se vuelve a correr la misma simulación, el estado final queda:
+\begin{verbatim}
+M = ok,  
+Libros = {[9788420471839,2],[9788432320767,1]},  
+CantPrestada = {[9788420471839,1],[9788432320767,1]},  
+Prestamos = {[P-4540/3,{[2,9788432320767],[1,9788420471839]}]}
+\end{verbatim}
+
+\subsection{Simulaciones simbólicas}
+Se activa \texttt{groundsol} para realizar algunas simulaciones simbólicas.
+
+\subsubsection*{Simulación 3}
+Se quiere ver un estado donde \texttt{prestarLibro} devuelva ``no disponible''.
+
+\begin{verbatim}
+dec([Libros, Libros_], libros) 
+& dec([CantPrestada, CantPrestada_], cantPrestada) 
+& dec([Prestamos, Prestamos_], prestamos) 
+& dec(L, isbn) & dec(S, nrosocio) 
+& prestarLibro(Limite, Libros, CantPrestada, Prestamos, libro, S, 
+    no_disponible, Libros_, CantPrestada_, Prestamos_).
+\end{verbatim}
+
+\begin{verbatim}
+Libros = {[libro,n3]},  
+Libros_ = {[libro,n3]},  
+CantPrestada = {[libro,n3]},  
+CantPrestada_ = {[libro,n3]},  
+Prestamos = n2,  
+Prestamos_ = n2,  
+S = n1,  
+Limite = n0
+\end{verbatim}
+
+Notar que hay \texttt{n3} ejemplares de \texttt{libro} prestados, que son todos los que tiene la biblioteca. Por lo tanto, en este escenario no quedan libros disponibles para prestar.
+
+\subsubsection*{Simulación 4}
+Se quiere ver en qué ocasión \texttt{consultarLibro} da ``no existe''.
+\begin{verbatim}
+dec([Libros, Libros_], libros) 
+& dec([CantPrestada, CantPrestada_], cantPrestada) 
+& dec(L, isbn) & dec(N, int) 
+& consultarLibro(Libros, CantPrestada, libro, N, no_existe).
+\end{verbatim}
+
+\begin{verbatim}
+Libros = {},  
+CantPrestada = n1,  
+N = n0
+\end{verbatim}
+
+El caso obtenido es cuando la biblioteca no tiene ningún libro.
+
+\section{Condiciones de verificación}
+
+Al chequear las condiciones de verificación se obtuvo:
+
+\begin{verbatim}
+{log}=> check_vcs_biblioteca.
+
+Checking axioms_sat ... OK
+Checking bibliotecaInit_sat_invTipo ... OK
+Checking bibliotecaInit_sat_bibliotecaInv ... OK
+Checking altaLibro_is_sat ... OK
+Checking consultarLibro_is_sat ... OK
+Checking prestarLibro_is_sat ... OK
+Checking altaLibro_pi_invTipo ... ERROR
+Checking altaLibro_pi_bibliotecaInv ... OK
+Checking consultarLibro_pi_invTipo ... OK
+Checking consultarLibro_pi_bibliotecaInv ... OK
+Checking prestarLibro_pi_invTipo ... OK
+Checking prestarLibro_pi_bibliotecaInv ... OK
+
+Total VCs: 12 (discharged: 11, failed: 1, timeout: 0)
+Execution time (excluding timeouts): 3.200922727584839 s
+yes
+\end{verbatim}
+
+Como \texttt{altaLibro\_pi\_invTipo} da \texttt{ERROR}, se busca un contraejemplo con \texttt{vcge}:
+\begin{verbatim}
+{log}=> vcgce(altaLibro_pi_invTipo).
+
+Libros = {},  
+CantPrestada = {[n1,n0]},  
+Prestamos = {},  
+L = n1,  
+N = 0,  
+Libros_ = {[n1,0]},  
+CantPrestada_ = {[n1,0],[n1,n0]},  
+Prestamos_ = {}
+\end{verbatim}
+
+El invariante \texttt{bibliotecaInv} no se cumple. La operación se aplica a un estado donde \texttt{n1} está en el dominio de \texttt{CantPrestada} pero no en el dominio de \texttt{Libros}.
+
+Para solucionarlo, se agregó este invariante como hipótesis en el predicado que fallaba:
+
+\begin{verbatim}
+altaLibro_pi_invTipo(Libros,CantPrestada,Prestamos,Libros,
+    CantPrestada,Prestamos,L,N,Libros_,CantPrestada_,
+    Prestamos_) :-
+    bibliotecaInv(CantPrestada, Libros) & 
+    neg(
+        invTipo(Libros,CantPrestada,Prestamos) &
+        altaLibro(Libros,CantPrestada,Prestamos,L,N,Libros_,
+            CantPrestada_,Prestamos_) implies
+        invTipo(Libros_,CantPrestada_,Prestamos_)
+    ).
+\end{verbatim}
+
+Al volver a chequear, se verifica exitosamente:
+\begin{verbatim}
+{log}=> consult("biblioteca-vc.slog").
+{log}=> check_vcs_biblioteca.
+
+Checking altaLibro_pi_invTipo ... OK
+
+Total VCs: 1 (discharged: 1, failed: 0, timeout: 0)
+Execution time (excluding timeouts): 0.06345748901367188 s
+yes
+\end{verbatim}
+
+\subsubsection*{Nota} En una ocasión la verificación de uno de los lemas me dió TIMEOUT:
+\begin{verbatim}
+Checking prestarLibro_pi_bibliotecaInv ... TIMEOUT
+
+Total VCs: 12 (discharged: 11, failed: 0, timeout: 1)
+Execution time (excluding timeouts): 16.007385969161987 s
+\end{verbatim}
+
+Como \texttt{prestarLibro} contiene varias operaciones oplus en su definición, probé con el comando:
+\begin{verbatim}
+    check_vcs_biblioteca(60000, [oplus_fe]).
+\end{verbatim}
+
+Y \set{log} lo pudo verificar correctamente:
+\begin{verbatim}
+Checking prestarLibro_pi_bibliotecaInv ... OK
+
+Total VCs: 1 (discharged: 1, failed: 0, timeout: 0)
+Execution time (excluding timeouts): 0.579350471496582 s
+\end{verbatim}
+
+\section{Casos de prueba}
+
+\subsection*{Operación \texttt{altaLibro}}
+Se utiliza la táctica DNF para particionar el árbol en clases de prueba según las precondiciones de la operación. La clase \verb|altaLibro_dnf_1| corresponde al predicado \texttt{altaLibroNuevo}, mientras que la clase \verb|altaLibro_dnf_2| corresponde al predicado \texttt{altaLibroExistente}. Estas operaciones utilizan los operadores \texttt{union} y \texttt{oplus}, respectivamente, por lo cual se procede a aplicar la táctica de particiones estándar.
+
+Para una de las clases generadas, se utiliza la táctica II para generar casos de prueba donde N sea mayor que 0.
+
+\begin{verbatim}
+ttf(biblioteca).
+applydnf(altaLibro(L,N)).
+applysp(altaLibro_dnf_1, un(Libros, {[L, N]}, Libros_)).
+applysp(altaLibro_dnf_2, oplus(Libros, {[L, Cant2]}, Libros_)).
+applyii(altaLibro_sp_25, N, [1]).
+prunett.
+gentc.
+exporttt.
+\end{verbatim}
+
+\sloppy Los casos de prueba generados están en el archivo \verb|biblioteca_altaLibro-tt.slog|
+
+\subsection*{Operación \texttt{consultarLibro}}
+En este caso se aplica DNF y luego SC sobre todo el árbol. La táctica SC aquí es interesante porque genera casos donde $\texttt{Libros} \neq \set{}$
+
+\begin{verbatim}
+ttf(biblioteca).
+applydnf(consultarLibro(L)).
+applysc(consultarLibro_vis, Libros).
+prunett.
+gentc.
+exporttt.
+\end{verbatim}
+
+\sloppy Los casos de prueba generados están en el archivo \verb|biblioteca_consultarLibro-tt.slog|
+
+\subsection*{Operación \texttt{prestarLibro}}
+Luego de aplicar DNF, se aplica la táctica de particiones estándar sobre las primeras dos clases de prueba utilizando los predicados que aparecen en sus respectivas operaciones.
+
+Para la tercera clase de prueba, que corresponde con el predicado \texttt{socioExcedeLimite}, se usa la táctica II para generar casos donde \texttt{Limite} asuma diferentes valores.
+
+\begin{verbatim}
+ttf(biblioteca).
+applydnf(prestarLibro(L, S)).
+applysp(prestarLibro_dnf_1, 
+    oplus(CantPrestada, {[L, Cplus1]}, CantPrestada_)).
+applysp(prestarLibro_dnf_2, 
+    oplus(Prestamos, {[S, Prestados_]}, Prestamos_)).
+applyii(prestarLibro_dnf_3, Limite, [1]).
+prunett.
+gentc.
+exporttt.
+\end{verbatim}
+
+\sloppy Los casos de prueba generados están en el archivo \verb|biblioteca_prestarLibro-tt.slog|
+
+\end{document}
+

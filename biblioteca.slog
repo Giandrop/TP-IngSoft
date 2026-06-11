@@ -1,18 +1,21 @@
+parameters([Limite]).
+
 % Variables de estado
 variables([Libros, CantPrestada, Prestamos]).
 
 % Tipo MSJ
 def_type(msj, enum([ok, no_existe, no_disponible, excede_limite])).
 
-% parameters([Datos]).
-% axiom(datos_pf).
-% decp_p_type(datos_pf(isbn, cp(titulo, autor))).
-% datos_pf(Datos) :- pfun(Datos).
+% Definición axiomática
+axiom(limite).
+dec_p_type(limite(int)).
+limite(Limite) :- Limite > 0.
 
 % Sinónimos de tipos para cada una de las variables
 def_type(libros, rel(isbn, int)).
 def_type(cantPrestada, rel(isbn, int)).
-def_type(prestamos, rel(nrosocio, isbn)).
+def_type(seqisbn, rel(int, isbn)).
+def_type(prestamos, rel(nrosocio, seqisbn)).
 
 % #############################################################################
 
@@ -28,8 +31,6 @@ invTipo(Libros, CantPrestada, Prestamos) :-
 invariant(bibliotecaInv).
 dec_p_type(bibliotecaInv(cantPrestada, libros)).
 bibliotecaInv(CantPrestada, Libros) :-
-    % dec_type(A, set(isbn)) &
-    % dom(CantPrestada, A) & dom(Libros, B) & A = B.
     let([A, B], dom(CantPrestada, A) & dom(Libros, B), A = B).
 
 % #############################################################################
@@ -71,65 +72,91 @@ altaLibro(Libros, CantPrestada, Prestamos, L, N, Libros_, CantPrestada_, Prestam
 
 % #############################################################################
 
-% Operación: consultarLibro
+% Operación: ConsultarLibro
 
-dec_p_type(consultarLibroOk(libros, cantPrestada, prestamos, isbn, int, msj)).
-consultarLibroOk(Libros, CantPrestada, Prestamos, L, N, M) :-
+dec_p_type(consultarLibroOk(libros, cantPrestada, isbn, int, msj)).
+consultarLibroOk(Libros, CantPrestada, L, N, M) :-
     dec(DomLibros, set(isbn)) & dom(Libros, DomLibros) & L in DomLibros
     & dec([Cant1, Cant2], int) & applyTo(CantPrestada, L, Cant1) & applyTo(Libros, L, Cant2) & Cant1 < Cant2
     & N is Cant2 - Cant1
     & M = ok.
 
-dec_p_type(consultarLibroNoDisponible(libros, cantPrestada, prestamos, isbn, msj)).
-consultarLibroNoDisponible(Libros, CantPrestada, Prestamos, L, M) :-
+dec_p_type(consultarLibroNoDisponible(libros, cantPrestada, isbn, msj)).
+consultarLibroNoDisponible(Libros, CantPrestada, L, M) :-
     dec(DomLibros, set(isbn)) & dom(Libros, DomLibros) & L in DomLibros
     & dec([Cant1, Cant2], int) & applyTo(CantPrestada, L, Cant1) & applyTo(Libros, L, Cant2) & Cant1 = Cant2
     & M = no_disponible.
 
-dec_p_type(libroNoExiste(libros, cantPrestada, prestamos, isbn, msj)).
-libroNoExiste(Libros, CantPrestada, Prestamos, L, M) :-
+dec_p_type(libroNoExiste(libros, isbn, msj)).
+libroNoExiste(Libros, L, M) :-
     dec(DomLibros, set(isbn)) & dom(Libros, DomLibros) & L nin DomLibros
     & M = no_existe.
 
 operation(consultarLibro).
-dec_p_type(consultarLibro(libros, cantPrestada, prestamos, isbn, int, msj)).
-consultarLibro(Libros, CantPrestada, Prestamos, L, N, M) :-
-    consultarLibroOk(Libros, CantPrestada, Prestamos, L, N, M)
+dec_p_type(consultarLibro(libros, cantPrestada, isbn, int, msj)).
+consultarLibro(Libros, CantPrestada, L, N, M) :-
+    consultarLibroOk(Libros, CantPrestada, L, N, M)
     or
-    consultarLibroNoDisponible(Libros, CantPrestada, Prestamos, L, M)
+    consultarLibroNoDisponible(Libros, CantPrestada, L, M)
     or
-    libroNoExiste(Libros, CantPrestada, Prestamos, L, M).
+    libroNoExiste(Libros, L, M).
 
 % #############################################################################
 
 % Operación: PrestarLibro
 
-dec_p_type(prestarLibroOk(libros, cantPrestada, prestamos, isbn, nrosocio, msj, libros, cantPrestada, prestamos)).
-prestarLibroOk(Libros, CantPrestada, Prestamos, L, S, M, Libros_, CantPrestada_, Prestamos_) :-
+dec_p_type(prestarLibroOkSocioNuevo(libros, cantPrestada, prestamos, isbn, nrosocio, msj, libros, cantPrestada, prestamos)).
+prestarLibroOkSocioNuevo(Libros, CantPrestada, Prestamos, L, S, M, Libros_, CantPrestada_, Prestamos_) :-
     dec(DomPrestamos, set(nrosocio)) & dom(Prestamos, DomPrestamos) & S nin DomPrestamos
     & dec(DomLibros, set(isbn)) & dom(Libros, DomLibros) & L in DomLibros
     & dec([Cant1, Cant2], int) & applyTo(CantPrestada, L, Cant1) & applyTo(Libros, L, Cant2) & Cant1 < Cant2
     & Libros_ = Libros
     & dec([C, Cplus1], int) & applyTo(CantPrestada, L, C) & Cplus1 is C + 1 & oplus(CantPrestada, {[L, Cplus1]}, CantPrestada_)
-    & oplus(Prestamos, {[S, L]}, Prestamos_)
+    & oplus(Prestamos, {[S, {[1,L]}]}, Prestamos_)
     & M = ok.
 
-dec_p_type(socioExcedeLimite(libros, cantPrestada, prestamos, nrosocio, msj)).
-socioExcedeLimite(Libros, CantPrestada, Prestamos, S, M) :-
+dec_p_type(prestarLibroOkSocioExiste(int, libros, cantPrestada, prestamos, isbn, nrosocio, msj, libros, cantPrestada, prestamos)).
+prestarLibroOkSocioExiste(Limite, Libros, CantPrestada, Prestamos, L, S, M, Libros_, CantPrestada_, Prestamos_) :-
     dec(DomPrestamos, set(nrosocio)) & dom(Prestamos, DomPrestamos) & S in DomPrestamos
+    & dec(Prestados, seqisbn) & applyTo(Prestamos, S, Prestados) & dec(P, int) & size(Prestados, P) & P < Limite
+    & dec(DomLibros, set(isbn)) & dom(Libros, DomLibros) & L in DomLibros
+    & dec([Cant1, Cant2], int) & applyTo(CantPrestada, L, Cant1) & applyTo(Libros, L, Cant2) & Cant1 < Cant2
+    & Libros_ = Libros
+    & dec([C, Cplus1], int) & applyTo(CantPrestada, L, C) & Cplus1 is C + 1 & oplus(CantPrestada, {[L, Cplus1]}, CantPrestada_)
+    & dec(Prestados_, seqisbn) & add(Prestados, L, Prestados_) & oplus(Prestamos, {[S, Prestados_]}, Prestamos_)
+    & M = ok.
+
+dec_p_type(prestarLibroOk(int, libros, cantPrestada, prestamos, isbn, nrosocio, msj, libros, cantPrestada, prestamos)).
+prestarLibroOk(Limite, Libros, CantPrestada, Prestamos, L, S, M, Libros_, CantPrestada_, Prestamos_) :-
+    prestarLibroOkSocioNuevo(Libros, CantPrestada, Prestamos, L, S, M, Libros_, CantPrestada_, Prestamos_)
+    or
+    prestarLibroOkSocioExiste(Limite, Libros, CantPrestada, Prestamos, L, S, M, Libros_, CantPrestada_, Prestamos_).
+
+dec_p_type(socioExcedeLimite(int, prestamos, nrosocio, msj)).
+socioExcedeLimite(Limite, Prestamos, S, M) :-
+    dec(DomPrestamos, set(nrosocio)) & dom(Prestamos, DomPrestamos) & S in DomPrestamos
+    & dec(Prestados, seqisbn) & applyTo(Prestamos, S, Prestados) & dec(P, int) & size(Prestados, P) & P >= Limite
     & M = excede_limite.
 
-dec_p_type(libroNoDisponible(libros, cantPrestada, prestamos, isbn, msj)).
-libroNoDisponible(Libros, CantPrestada, Prestamos, L, M) :-
+dec_p_type(libroNoDisponible(libros, cantPrestada, isbn, msj)).
+libroNoDisponible(Libros, CantPrestada, L, M) :-
     dec(DomLibros, set(isbn)) & dom(Libros, DomLibros) & L in DomLibros
     & dec([Cant1, Cant2], int) & applyTo(CantPrestada, L, Cant1) & applyTo(Libros, L, Cant2) & Cant1 = Cant2
     & M = no_disponible.
 
 operation(prestarLibro).
-dec_p_type(prestarLibro(libros, cantPrestada, prestamos, isbn, nrosocio, msj, libros, cantPrestada, prestamos)).
-prestarLibro(Libros, CantPrestada, Prestamos, L, S, M, Libros_, CantPrestada_, Prestamos_) :-
-    prestarLibroOk(Libros, CantPrestada, Prestamos, L, S, M, Libros_, CantPrestada_, Prestamos_)
-    or ((socioExcedeLimite(Libros, CantPrestada, Prestamos, S, M) 
-        or libroNoDisponible(Libros, CantPrestada, Prestamos, L, M))
+dec_p_type(prestarLibro(int, libros, cantPrestada, prestamos, isbn, nrosocio, msj, libros, cantPrestada, prestamos)).
+prestarLibro(Limite, Libros, CantPrestada, Prestamos, L, S, M, Libros_, CantPrestada_, Prestamos_) :-
+    prestarLibroOk(Limite, Libros, CantPrestada, Prestamos, L, S, M, Libros_, CantPrestada_, Prestamos_)
+    or ((socioExcedeLimite(Limite, Prestamos, S, M) 
+        or libroNoDisponible(Libros, CantPrestada, L, M))
         & Libros_ = Libros & CantPrestada_ = CantPrestada & Prestamos_ = Prestamos).
 
+% #############################################################################
+
+% Predicados para establecer el parámetro 'límite' en el entorno NEXT
+dec_p_type(limite_1(int)).
+limite_1(Limite) :- Limite = 1.
+
+dec_p_type(limite_2(int)).
+limite_2(Limite) :- Limite = 2.

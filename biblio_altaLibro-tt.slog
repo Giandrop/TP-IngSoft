@@ -10,7 +10,7 @@ altaLibro_sc_22(L,N,Libros,CantPrestada,Prestamos) :-
   dec([_5108,_5012],int) &
   N>=0 &
   L in _5034 &
-  dom(Libros,_5034) &
+  dom(Libros,_5034)biblioteca_seq.slog &
   dec(_5034,set(isbn)) &
   Libros={_5364} &
   dec(_5364,[isbn,int]).

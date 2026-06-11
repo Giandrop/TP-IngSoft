@@ -1,2 +1,17 @@
-setlog
+# Archivos de setlog
+setlog*
+size_solver.pl
+ttf_sp.pl
+
+# Archivos de latex
+informe/informe.aux
+informe/informe.fdb_latexmk
+informe/informe.fls
+informe/informe.log
+# informe/informe.pdf
+informe/informe.synctex.gz
+
+# Otras cosas
 old
+TP*
+entrega

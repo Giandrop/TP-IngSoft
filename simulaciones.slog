@@ -1,4 +1,8 @@
 % Simulaciones
+
+% Seteamos el parámetro límite
+setpp(limite_1).
+
 % Agregar libro nuevo, luego libro existente
 [initial]:[invTipo, bibliotecaInv] 
 >> altaLibro(L:"9788420471839", N:[[2, 1]]) 
@@ -78,6 +82,8 @@
 [initial]:[invTipo, bibliotecaInv] 
 >> altaLibro(L:[["9788420471839", "9788432320767"]], N:[[2, 1]]) 
 >> prestarLibro(L:[["9788420471839", "9788432320767"]],S:"P-4540/3").
+% Parameters:
+% Limite = 1
 
 % Execution trace is:
 % Libros = {},  
@@ -103,38 +109,37 @@
 % Prestamos = {[P-4540/3,9788420471839]}
 
 % Simulaciones simbólicas
+groundsol.
 % PrestarLibro da no disponible
 dec([Libros, Libros_], libros) 
 & dec([CantPrestada, CantPrestada_], cantPrestada) 
 & dec([Prestamos, Prestamos_], prestamos) 
 & dec(L, isbn) & dec(S, nrosocio) 
-& prestarLibro(Libros, CantPrestada, Prestamos, L, S, no_disponible, Libros_, CantPrestada_, Prestamos_).
+& prestarLibro(Limite, Libros, CantPrestada, Prestamos, libro, S, no_disponible, Libros_, CantPrestada_, Prestamos_).
 
-% Libros = {[n3,n2]},  
-% Libros_ = {[n3,n2]},  
-% CantPrestada = {[n3,n2]},  
-% CantPrestada_ = {[n3,n2]},  
-% Prestamos = n1,  
-% Prestamos_ = n1,  
-% L = n3,  
-% S = n0
+% Libros = {[libro,n3]},  
+% Libros_ = {[libro,n3]},  
+% CantPrestada = {[libro,n3]},  
+% CantPrestada_ = {[libro,n3]},  
+% Prestamos = n2,  
+% Prestamos_ = n2,  
+% S = n1,  
+% Limite = n0
 
-% Vemos que la cantidad de libros "n3" prestados es la misma que la que hay
+% Vemos que hay n3 ejemplares de "libro" prestados, que son todos los que tiene la biblioteca
+% Por lo tanto, en este escenario no nos quedan libros disponibles para prestar
 
 % ConsultarLibro da no existe
 dec([Libros, Libros_], libros) 
 & dec([CantPrestada, CantPrestada_], cantPrestada) 
-& dec([Prestamos, Prestamos_], prestamos) 
 & dec(L, isbn) & dec(N, int) 
-& consultarLibro(Libros, CantPrestada, Prestamos, L, N, no_existe).
+& consultarLibro(Libros, CantPrestada, libro, N, no_existe).
 
 % Libros = {},  
-% CantPrestada = n3,  
-% Prestamos = n2,  
-% L = n1,  
+% CantPrestada = n1,  
 % N = n0
 
-% n1 no está en Libros
+% En este caso, la bilioteca no tiene ningún libro
 
 % Comandos
 % consult('biblioteca.pl').

@@ -1,0 +1,80 @@
+altaLibro_ts_12(L,N,Libros,CantPrestada,Prestamos,Limite) :-
+  N>=0 &
+  L nin _96630 &
+  dom(Libros,_96630) &
+  dec(_96630,set(isbn)) &
+  Libros={} &
+  {[L,N]}neq{}.
+
+altaLibro_tc_12(L,N,Libros,CantPrestada,Prestamos,Limite) :-
+  N=0 &
+  L=isbn:n0 &
+  Libros={}.
+
+altaLibro_ts_14(L,N,Libros,CantPrestada,Prestamos,Limite) :-
+  N>=0 &
+  L nin _96630 &
+  dom(Libros,_96630) &
+  dec(_96630,set(isbn)) &
+  Libros neq {} &
+  {[L,N]}neq{} &
+  disj(Libros,{[L,N]}).
+
+altaLibro_tc_14(L,N,Libros,CantPrestada,Prestamos,Limite) :-
+  N=0 &
+  L=isbn:n0 &
+  Libros={[isbn:n1,2]}.
+
+altaLibro_ts_24(L,N,Libros,CantPrestada,Prestamos,Limite) :-
+  _96828 is N+_96924 &
+  applyTo(Libros,L,_96924) &
+  dec([_96924,_96828],int) &
+  N>=0 &
+  L in _96850 &
+  dom(Libros,_96850) &
+  dec(_96850,set(isbn)) &
+  Libros neq {} &
+  {[L,_96828]}neq{} &
+  let([_97320,_97326],dom(Libros,_97320)&dom({[L,_96828]},_97326),_97320=_97326).
+
+altaLibro_tc_24(L,N,Libros,CantPrestada,Prestamos,Limite) :-
+  N=0 &
+  Libros={[isbn:n0,0]} &
+  L=isbn:n0.
+
+altaLibro_ts_252(L,N,Libros,CantPrestada,Prestamos,Limite) :-
+  _96828 is N+_96924 &
+  applyTo(Libros,L,_96924) &
+  dec([_96924,_96828],int) &
+  N>=0 &
+  L in _96850 &
+  dom(Libros,_96850) &
+  dec(_96850,set(isbn)) &
+  Libros neq {} &
+  {[L,_96828]}neq{} &
+  let([_97406,_97412],dom(Libros,_97406)&dom({[L,_96828]},_97412),subset(_97412,_97406)&_97406 neq _97412) &
+  N=0.
+
+altaLibro_tc_252(L,N,Libros,CantPrestada,Prestamos,Limite) :-
+  N=0 &
+  Libros={[isbn:n0,0],[isbn:n1,2]} &
+  L=isbn:n0.
+
+altaLibro_ts_253(L,N,Libros,CantPrestada,Prestamos,Limite) :-
+  _96828 is N+_96924 &
+  applyTo(Libros,L,_96924) &
+  dec([_96924,_96828],int) &
+  N>=0 &
+  L in _96850 &
+  dom(Libros,_96850) &
+  dec(_96850,set(isbn)) &
+  Libros neq {} &
+  {[L,_96828]}neq{} &
+  let([_97406,_97412],dom(Libros,_97406)&dom({[L,_96828]},_97412),subset(_97412,_97406)&_97406 neq _97412) &
+  0<N.
+
+altaLibro_tc_253(L,N,Libros,CantPrestada,Prestamos,Limite) :-
+  N=1 &
+  Libros={[isbn:n0,0],[isbn:n1,2]} &
+  L=isbn:n0.
+
